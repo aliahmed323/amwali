@@ -72,8 +72,8 @@
           </div>
         </div>
 
-        <div v-if="authStore.error" class="text-rose-400 text-sm text-center bg-rose-500/10 p-3 rounded-lg">
-          {{ authStore.error === 'Firebase: Error (auth/email-already-in-use).' ? 'البريد الإلكتروني مسجل مسبقاً.' : (authStore.error === 'Firebase: Error (auth/invalid-credential).' ? 'البريد الإلكتروني أو كلمة المرور غير صحيحة.' : authStore.error) }}
+        <div v-if="authStore.error" class="text-rose-400 text-sm text-center bg-rose-500/10 p-3 rounded-xl">
+          {{ translateError(authStore.error) }}
         </div>
 
         <button 
@@ -108,14 +108,31 @@ const isRegisterMode = ref(true); // Default to register as requested
 const handleAuth = async () => {
   if (!email.value || !password.value) return;
   
-  if (isRegisterMode.value) {
-    await authStore.register(email.value, password.value);
-  } else {
-    await authStore.login(email.value, password.value);
-  }
-  
-  if (authStore.isAuthenticated) {
-    router.push('/');
+  try {
+    if (isRegisterMode.value) {
+      await authStore.register(email.value, password.value);
+    } else {
+      await authStore.login(email.value, password.value);
+    }
+    
+    if (authStore.isAuthenticated) {
+      router.push('/');
+    }
+  } catch (err) {
+    // الخطأ يُعرض تلقائياً من authStore.error
   }
 };
+
+const translateError = (msg) => {
+  if (!msg) return ''
+  if (msg.includes('email-already-in-use')) return 'هذا البريد الإلكتروني مسجل مسبقاً، جرب تسجيل الدخول.'
+  if (msg.includes('invalid-credential') || msg.includes('wrong-password') || msg.includes('user-not-found')) return 'البريد الإلكتروني أو كلمة المرور غير صحيحة.'
+  if (msg.includes('weak-password')) return 'كلمة المرور ضعيفة، يجب أن تكون 6 أحرف على الأقل.'
+  if (msg.includes('invalid-email')) return 'صيغة البريد الإلكتروني غير صحيحة.'
+  if (msg.includes('unauthorized-domain') || msg.includes('auth/unauthorized-domain')) return 'الموقع غير مصرح له من Firebase. راجع إعدادات Authorized Domains.'
+  if (msg.includes('configuration-not-found')) return 'لم يتم تفعيل تسجيل الدخول بالبريد في Firebase. فعّل Email/Password من Authentication.'
+  if (msg.includes('network-request-failed')) return 'لا يوجد اتصال بالإنترنت، تحقق من الشبكة.'
+  if (msg.includes('too-many-requests')) return 'تم تجاوز عدد المحاولات، حاول بعد دقائق.'
+  return msg
+}
 </script>

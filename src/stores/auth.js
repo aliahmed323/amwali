@@ -5,7 +5,7 @@ import { onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebas
 
 export const useAuthStore = defineStore('auth', () => {
   const user = ref(null)
-  const loading = ref(true)
+  const loading = ref(false)
   const error = ref(null)
 
   const isAuthenticated = computed(() => !!user.value)
