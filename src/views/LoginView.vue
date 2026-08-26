@@ -1,20 +1,42 @@
 <template>
   <div class="min-h-screen bg-slate-950 flex flex-col justify-center items-center p-6 text-white dir-rtl">
     <div class="w-full max-w-md bg-slate-900 rounded-3xl border border-slate-800 p-8 shadow-2xl">
-      <div class="text-center mb-10">
+      <div class="text-center mb-8">
         <div class="text-6xl mb-4">💰</div>
         <h1 class="text-3xl font-bold mb-2">أموالي</h1>
         <p class="text-slate-400">إدارة الأموال العائلية</p>
       </div>
 
-      <form @submit.prevent="handleLogin" class="space-y-6">
+      <!-- Toggle Mode -->
+      <div class="flex bg-slate-800 rounded-xl p-1 mb-6">
+        <button 
+          @click="isRegisterMode = true" 
+          :class="['flex-1 py-2 rounded-lg text-sm font-medium transition-colors', isRegisterMode ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-300']"
+        >
+          إنشاء حساب
+        </button>
+        <button 
+          @click="isRegisterMode = false" 
+          :class="['flex-1 py-2 rounded-lg text-sm font-medium transition-colors', !isRegisterMode ? 'bg-blue-600 text-white' : 'text-slate-400 hover:text-slate-300']"
+        >
+          تسجيل الدخول
+        </button>
+      </div>
+
+      <form @submit.prevent="handleAuth" class="space-y-6">
+        <div v-if="isRegisterMode" class="bg-blue-500/10 border border-blue-500/20 text-blue-400 p-4 rounded-xl text-sm mb-4">
+          💡 <b>ملاحظة هامة:</b>
+          <br>
+          لإنشاء حساب الزوجة، يجب أن يحتوي البريد الإلكتروني على كلمة "wife" لكي يتعرف عليه التطبيق كـ "الزوجة" (مثال: wife@amwali.com).
+        </div>
+
         <div>
           <label class="block text-sm font-medium text-slate-300 mb-2">البريد الإلكتروني</label>
           <div class="relative">
             <input 
               v-model="email" 
               type="email" 
-              placeholder="البريد الإلكتروني"
+              placeholder="example@gmail.com"
               class="w-full bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 px-4 py-3 pe-10"
               required
             >
@@ -33,9 +55,10 @@
             <input 
               v-model="password" 
               :type="showPassword ? 'text' : 'password'" 
-              placeholder="كلمة المرور"
+              placeholder="كلمة المرور (6 أحرف على الأقل)"
               class="w-full bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 px-4 py-3 pe-10"
               required
+              minlength="6"
             >
             <button 
               type="button"
@@ -55,7 +78,7 @@
         </div>
 
         <div v-if="authStore.error" class="text-rose-400 text-sm text-center bg-rose-500/10 p-3 rounded-lg">
-          {{ authStore.error }}
+          {{ authStore.error === 'Firebase: Error (auth/email-already-in-use).' ? 'البريد الإلكتروني مسجل مسبقاً.' : (authStore.error === 'Firebase: Error (auth/invalid-credential).' ? 'البريد الإلكتروني أو كلمة المرور غير صحيحة.' : authStore.error) }}
         </div>
 
         <button 
@@ -67,7 +90,7 @@
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
           </svg>
-          <span>{{ authStore.loading ? 'جاري تسجيل الدخول...' : 'تسجيل الدخول' }}</span>
+          <span>{{ authStore.loading ? 'جاري المعالجة...' : (isRegisterMode ? 'إنشاء حساب جديد' : 'تسجيل الدخول') }}</span>
         </button>
       </form>
     </div>
@@ -85,11 +108,16 @@ const authStore = useAuthStore();
 const email = ref('');
 const password = ref('');
 const showPassword = ref(false);
+const isRegisterMode = ref(true); // Default to register as requested
 
-const handleLogin = async () => {
+const handleAuth = async () => {
   if (!email.value || !password.value) return;
   
-  await authStore.login(email.value, password.value);
+  if (isRegisterMode.value) {
+    await authStore.register(email.value, password.value);
+  } else {
+    await authStore.login(email.value, password.value);
+  }
   
   if (authStore.isAuthenticated) {
     router.push('/');

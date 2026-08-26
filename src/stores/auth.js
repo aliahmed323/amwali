@@ -44,6 +44,22 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  const register = async (email, password) => {
+    loading.value = true
+    error.value = null
+    try {
+      const { createUserWithEmailAndPassword } = await import('firebase/auth')
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password)
+      user.value = userCredential.user
+      return userCredential.user
+    } catch (err) {
+      error.value = err.message
+      throw err
+    } finally {
+      loading.value = false
+    }
+  }
+
   const logout = async (router) => {
     try {
       await signOut(auth)
@@ -66,6 +82,7 @@ export const useAuthStore = defineStore('auth', () => {
     userInitial,
     initAuth,
     login,
+    register,
     logout
   }
 })
