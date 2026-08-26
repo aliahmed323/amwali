@@ -24,11 +24,6 @@
       </div>
 
       <form @submit.prevent="handleAuth" class="space-y-6">
-        <div v-if="isRegisterMode" class="bg-blue-500/10 border border-blue-500/20 text-blue-400 p-4 rounded-xl text-sm mb-4">
-          💡 <b>ملاحظة هامة:</b>
-          <br>
-          لإنشاء حساب الزوجة، يجب أن يحتوي البريد الإلكتروني على كلمة "wife" لكي يتعرف عليه التطبيق كـ "الزوجة" (مثال: wife@amwali.com).
-        </div>
 
         <div>
           <label class="block text-sm font-medium text-slate-300 mb-2">البريد الإلكتروني</label>
