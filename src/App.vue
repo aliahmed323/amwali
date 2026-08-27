@@ -1,39 +1,48 @@
 <script setup>
-import { ref, computed } from 'vue';
-import { useRoute } from 'vue-router';
+import { ref, computed, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from './stores/auth';
-
-// Import components (assuming they will be created)
 import BottomNav from './components/BottomNav.vue';
 import QuickAddFAB from './components/QuickAddFAB.vue';
 import AddTransactionModal from './components/AddTransactionModal.vue';
 
 const route = useRoute();
+const router = useRouter();
 const authStore = useAuthStore();
 
 const isLoginRoute = computed(() => route.path === '/login');
 const showNavigation = computed(() => authStore.isAuthenticated && !isLoginRoute.value);
 
 const showAddModal = ref(false);
+const openAddModal = () => { showAddModal.value = true; };
+const closeAddModal = () => { showAddModal.value = false; };
 
-const openAddModal = () => {
-  showAddModal.value = true;
-};
-
-const closeAddModal = () => {
-  showAddModal.value = false;
-};
+// بمجرد أن يتأكد Firebase من الجلسة، نوجه المستخدم للصفحة الصحيحة
+watch(() => authStore.authReady, (ready) => {
+  if (!ready) return;
+  if (authStore.isAuthenticated && isLoginRoute.value) {
+    router.replace('/');
+  } else if (!authStore.isAuthenticated && !isLoginRoute.value) {
+    router.replace('/login');
+  }
+});
 </script>
 
 <template>
-  <div class="min-h-screen bg-slate-950 text-white font-cairo safe-top pb-24">
+  <!-- شاشة التحميل أثناء التحقق من الجلسة — تمنع أي توجيه خاطئ -->
+  <div v-if="!authStore.authReady" class="min-h-screen bg-slate-950 flex flex-col items-center justify-center gap-4">
+    <div class="text-5xl">💰</div>
+    <div class="animate-spin h-10 w-10 border-4 border-blue-500 border-t-transparent rounded-full"></div>
+    <p class="text-slate-400 text-sm">أموالي</p>
+  </div>
+
+  <div v-else class="min-h-screen bg-slate-950 text-white font-cairo safe-top pb-24">
     <router-view v-slot="{ Component }">
       <transition name="fade" mode="out-in">
         <component :is="Component" />
       </transition>
     </router-view>
 
-    <!-- Navigation and Quick Add for authenticated users -->
     <template v-if="showNavigation">
       <BottomNav />
       <QuickAddFAB @click="openAddModal" />
@@ -45,9 +54,8 @@ const closeAddModal = () => {
 <style>
 .fade-enter-active,
 .fade-leave-active {
-  transition: opacity 0.2s ease;
+  transition: opacity 0.15s ease;
 }
-
 .fade-enter-from,
 .fade-leave-to {
   opacity: 0;
