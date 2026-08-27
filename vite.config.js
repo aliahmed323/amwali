@@ -10,8 +10,10 @@ export default defineConfig({
     VitePWA({
       registerType: 'autoUpdate',
       manifest: {
-        name: 'أموالي',
+        name: 'أموالي - إدارة الأموال',
         short_name: 'أموالي',
+        description: 'تطبيق إدارة الأموال العائلية v2.0',
+        version: '2.0.0',
         dir: 'rtl',
         lang: 'ar',
         display: 'standalone',

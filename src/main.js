@@ -13,24 +13,25 @@ const pinia = createPinia();
 app.use(pinia);
 app.use(router);
 
-app.mount('#app');
-
+// يجب استدعاء initAuth قبل تركيب التطبيق حتى يكون المستمع جاهزاً
+// قبل أن يبدأ حارس الروتر في التحقق من حالة المصادقة
 const authStore = useAuthStore();
 authStore.initAuth();
 
-// عند تسجيل الدخول، نُحمّل البيانات الافتراضية تلقائياً إذا لم تكن موجودة
+// الآن نركب التطبيق — حارس الروتر سينتظر Firebase عبر waitForAuth()
+app.mount('#app');
+
+// تحميل البيانات الافتراضية عند تسجيل الدخول
 let initialized = false;
-const unwatch = authStore.$subscribe(async () => {
+authStore.$subscribe(async () => {
   if (authStore.isAuthenticated && !initialized) {
     initialized = true;
     const walletsStore = useWalletsStore();
     const categoriesStore = useCategoriesStore();
 
-    // تشغيل الاستماع لبيانات Firebase
     walletsStore.fetchWallets();
     categoriesStore.fetchCategories();
 
-    // إنشاء محافظ وأقسام افتراضية إذا كانت قاعدة البيانات فارغة
     setTimeout(async () => {
       await walletsStore.initDefaultWallets();
       await categoriesStore.initDefaultCategories();
