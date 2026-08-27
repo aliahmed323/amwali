@@ -34,6 +34,21 @@
       </div>
     </div>
 
+    <div v-if="box.dailyAmount > 0" class="flex items-center justify-between mb-4 bg-slate-800/50 p-2 rounded-xl border border-slate-700/50">
+      <div class="flex items-center gap-2">
+        <span class="text-sm">🎯</span>
+        <div>
+          <p class="text-xs font-bold text-slate-300">يومي: {{ formatMoney(box.dailyAmount) }}</p>
+          <p class="text-[10px]" :class="isTodayDone ? 'text-emerald-400' : 'text-amber-400'">
+            {{ isTodayDone ? '✅ تمت إضافة اليوم' : '⏰ لم يتم إضافة اليوم' }}
+          </p>
+        </div>
+      </div>
+      <button v-if="!isTodayDone" @click.stop="$emit('quickAdd', box)" class="text-xs bg-amber-500 hover:bg-amber-400 text-white font-bold px-3 py-1.5 rounded-lg transition-colors">
+        + إضافة
+      </button>
+    </div>
+
     <div class="flex gap-2" @click.stop>
       <button @click="$emit('deposit', box)" class="flex-1 py-2 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 rounded-xl text-sm font-medium transition-colors">
         إيداع
@@ -55,7 +70,12 @@ const props = defineProps({
     required: true
   }
 })
-defineEmits(['click', 'deposit', 'withdraw'])
+defineEmits(['click', 'deposit', 'withdraw', 'quickAdd'])
+
+const isTodayDone = computed(() => {
+  const todayStr = new Date().toISOString().split('T')[0]
+  return props.box.lastContributionDate === todayStr
+})
 
 const progress = computed(() => {
   if (!props.box.targetAmount || props.box.targetAmount === 0) return 0

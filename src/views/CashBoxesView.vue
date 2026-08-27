@@ -36,6 +36,7 @@
           @click="openBoxDetail(box)"
           @deposit="openDepositModal(box)"
           @withdraw="openWithdrawModal(box)"
+          @quickAdd="quickAddToday"
         />
       </div>
       
@@ -73,6 +74,41 @@
             <label class="block text-sm font-medium text-slate-300 mb-2">تاريخ الهدف (اختياري)</label>
             <input v-model="newBox.targetDate" type="date" class="w-full bg-slate-800 border border-slate-700 rounded-xl text-white px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none">
           </div>
+          <div>
+            <label class="block text-sm font-medium text-slate-300 mb-2">المبلغ اليومي (د.ع) — اتركه فارغاً إن لم تريد مساهمة يومية</label>
+            <input
+              type="text" inputmode="numeric"
+              :value="displayDailyAmount"
+              @input="onDailyAmountInput"
+              placeholder="مثال: 5,000"
+              class="w-full bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:ring-2 focus:ring-blue-500 px-4 py-3"
+              dir="ltr"
+            >
+          </div>
+
+          <div v-if="newBox.dailyAmount > 0">
+            <label class="block text-sm font-medium text-slate-300 mb-2">طريقة الإضافة اليومية</label>
+            <div class="flex bg-slate-800 rounded-xl p-1 gap-1">
+              <button @click="newBox.contributionMode = 'manual'" type="button"
+                :class="['flex-1 py-2.5 rounded-lg text-sm font-bold transition-colors', newBox.contributionMode === 'manual' ? 'bg-amber-500 text-white' : 'text-slate-400']"
+              >🔔 يدوي (تذكير)</button>
+              <button @click="newBox.contributionMode = 'auto'" type="button"
+                :class="['flex-1 py-2.5 rounded-lg text-sm font-bold transition-colors', newBox.contributionMode === 'auto' ? 'bg-emerald-500 text-white' : 'text-slate-400']"
+              >⚡ تلقائي</button>
+            </div>
+            <p class="text-xs text-slate-500 mt-1 px-1">
+              {{ newBox.contributionMode === 'auto' ? 'سيتم خصم المبلغ تلقائياً من المحفظة عند فتح التطبيق' : 'ستظهر تذكيرة يومية لإضافة المبلغ يدوياً' }}
+            </p>
+          </div>
+
+          <div v-if="newBox.dailyAmount > 0 && newBox.contributionMode === 'auto'">
+            <label class="block text-sm font-medium text-slate-300 mb-2">اخصم من محفظة</label>
+            <select v-model="newBox.linkedWalletId" class="w-full bg-slate-800 border border-slate-700 rounded-xl text-white px-4 py-3 focus:ring-2 focus:ring-blue-500">
+              <option value="">اختر المحفظة</option>
+              <option v-for="w in walletsStore.wallets" :key="w.id" :value="w.id">{{ w.icon }} {{ w.name }}</option>
+            </select>
+          </div>
+
           <div>
             <label class="block text-sm font-medium text-slate-300 mb-2">الرمز</label>
             <div class="grid grid-cols-5 gap-2">
@@ -209,6 +245,7 @@ const walletsStore = useWalletsStore()
 
 onMounted(() => {
   cashBoxesStore.fetchCashBoxes()
+  cashBoxesStore.runAutoContributions(walletsStore)
 })
 
 // Add Box
@@ -218,12 +255,31 @@ const newBox = ref({
   title: '',
   targetAmount: null,
   targetDate: '',
-  icon: '🏠'
+  icon: '🏠',
+  dailyAmount: 0,
+  contributionMode: 'manual',
+  linkedWalletId: ''
 })
+
+const displayDailyAmount = ref('')
+
+const onDailyAmountInput = (e) => {
+  const raw = e.target.value.replace(/[^0-9]/g, '')
+  newBox.value.dailyAmount = raw ? parseInt(raw, 10) : 0
+  displayDailyAmount.value = raw ? parseInt(raw, 10).toLocaleString('en-US') : ''
+}
 
 const isNewBoxValid = computed(() => {
   return newBox.value.title.trim() !== '' && newBox.value.targetAmount > 0
 })
+
+const addingBoxId = ref(null)
+
+const quickAddToday = async (box) => {
+  addingBoxId.value = box.id
+  await cashBoxesStore.addDailyContribution(box.id, walletsStore)
+  addingBoxId.value = null
+}
 
 const saveCashBox = async () => {
   if (!isNewBoxValid.value) return
@@ -233,7 +289,8 @@ const saveCashBox = async () => {
     status: 'active'
   })
   showAddModal.value = false
-  newBox.value = { title: '', targetAmount: null, targetDate: '', icon: '🏠' }
+  newBox.value = { title: '', targetAmount: null, targetDate: '', icon: '🏠', dailyAmount: 0, contributionMode: 'manual', linkedWalletId: '' }
+  displayDailyAmount.value = ''
 }
 
 // Box Detail

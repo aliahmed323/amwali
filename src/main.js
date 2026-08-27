@@ -35,6 +35,18 @@ authStore.$subscribe(async () => {
     setTimeout(async () => {
       await walletsStore.initDefaultWallets();
       await categoriesStore.initDefaultCategories();
+      
+      // طلب إذن الإشعارات للمساهمات اليومية
+      if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission().then(permission => {
+          if (permission === 'granted') {
+            new Notification('أموالي 💰', {
+              body: 'تم تفعيل الإشعارات اليومية للقاصات بنجاح',
+              icon: '/amwali/icons/icon-192x192.png'
+            });
+          }
+        });
+      }
     }, 1500);
   }
   if (!authStore.isAuthenticated) {
