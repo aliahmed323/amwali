@@ -52,55 +52,42 @@
     </div>
 
     <!-- Add Cash Box Modal -->
-    <div v-if="showAddModal" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm" @click.self="showAddModal = false">
-      <div class="bg-slate-900 rounded-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
-        <div class="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900 z-10 sticky top-0">
+    <div v-if="showAddModal" class="fixed inset-0 z-50 flex flex-col justify-end bg-black/60 backdrop-blur-sm">
+      <div class="bg-slate-900 rounded-t-3xl w-full flex flex-col" style="max-height: 85vh;">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-slate-800 flex-shrink-0">
           <h3 class="text-xl font-bold">إنشاء قاصة جديدة</h3>
-          <button @click="showAddModal = false" class="text-slate-400 hover:text-white p-2">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
+          <button @click="showAddModal = false" class="text-slate-400 hover:text-white p-2 rounded-lg">
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
         </div>
-        
-        <div class="p-6 overflow-y-auto space-y-4">
+        <div class="overflow-y-auto flex-1 p-5 space-y-4">
           <div>
             <label class="block text-sm font-medium text-slate-300 mb-2">اسم القاصة</label>
             <input v-model="newBox.title" type="text" placeholder="مثال: سيارة جديدة، سفرة" class="w-full bg-slate-800 border border-slate-700 rounded-xl text-white px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none">
           </div>
-          
           <div>
-            <label class="block text-sm font-medium text-slate-300 mb-2">المبلغ المستهدف</label>
-            <div class="relative">
-              <input v-model.number="newBox.targetAmount" type="number" placeholder="0" class="w-full bg-slate-800 border border-slate-700 rounded-xl text-white px-4 py-3 pe-12 focus:ring-2 focus:ring-blue-500 outline-none">
-              <div class="absolute inset-y-0 end-0 flex items-center pe-4 pointer-events-none text-slate-400">د.ع</div>
-            </div>
+            <label class="block text-sm font-medium text-slate-300 mb-2">المبلغ المستهدف (د.ع)</label>
+            <input v-model.number="newBox.targetAmount" type="number" placeholder="0" class="w-full bg-slate-800 border border-slate-700 rounded-xl text-white px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none">
           </div>
-
           <div>
             <label class="block text-sm font-medium text-slate-300 mb-2">تاريخ الهدف (اختياري)</label>
             <input v-model="newBox.targetDate" type="date" class="w-full bg-slate-800 border border-slate-700 rounded-xl text-white px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none">
           </div>
-          
           <div>
             <label class="block text-sm font-medium text-slate-300 mb-2">الرمز</label>
             <div class="grid grid-cols-5 gap-2">
-              <button 
-                v-for="icon in icons" 
-                :key="icon" 
-                @click="newBox.icon = icon"
-                type="button"
+              <button v-for="icon in icons" :key="icon" @click="newBox.icon = icon" type="button"
                 class="h-12 flex items-center justify-center text-2xl rounded-xl border transition-colors"
-                :class="newBox.icon === icon ? 'bg-amber-600/20 border-amber-500' : 'bg-slate-800 border-slate-700 hover:border-slate-500'"
-              >
+                :class="newBox.icon === icon ? 'bg-amber-600/20 border-amber-500' : 'bg-slate-800 border-slate-700'">
                 {{ icon }}
               </button>
             </div>
           </div>
+          <div class="h-2"></div>
         </div>
-        
-        <div class="p-4 border-t border-slate-800 bg-slate-900 z-10 sticky bottom-0">
-          <button @click="saveCashBox" :disabled="!isNewBoxValid" class="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium rounded-xl px-6 py-3 transition-colors">
+        <div class="p-4 border-t border-slate-800 flex-shrink-0">
+          <button @click="saveCashBox" :disabled="!isNewBoxValid"
+            class="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white font-bold rounded-xl px-6 py-4 transition-colors">
             حفظ القاصة
           </button>
         </div>

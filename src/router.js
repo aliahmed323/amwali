@@ -63,8 +63,15 @@ const router = createRouter({
   routes
 });
 
-router.beforeEach((to, from, next) => {
+// انتظار تهيئة Firebase Auth قبل تطبيق حماية المسارات
+router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore();
+
+  // انتظر حتى يتحقق Firebase من حالة المصادقة
+  if (!authStore.authReady) {
+    await authStore.waitForAuth();
+  }
+
   const isAuthenticated = authStore.isAuthenticated;
 
   if (to.meta.requiresAuth && !isAuthenticated) {

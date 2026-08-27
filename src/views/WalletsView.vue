@@ -54,27 +54,23 @@
     </div>
 
     <!-- Add Wallet Modal -->
-    <div v-if="showAddModal" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm" @click.self="showAddModal = false">
-      <div class="bg-slate-900 rounded-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
-        <div class="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900 z-10 sticky top-0">
+    <div v-if="showAddModal" class="fixed inset-0 z-50 flex flex-col justify-end bg-black/60 backdrop-blur-sm">
+      <div class="bg-slate-900 rounded-t-3xl w-full flex flex-col" style="max-height: 85vh;">
+        <div class="flex items-center justify-between px-5 py-4 border-b border-slate-800 flex-shrink-0">
           <h3 class="text-xl font-bold">إضافة محفظة جديدة</h3>
-          <button @click="showAddModal = false" class="text-slate-400 hover:text-white p-2">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
+          <button @click="showAddModal = false" class="text-slate-400 hover:text-white p-2 rounded-lg">
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
           </button>
         </div>
-        
-        <div class="p-6 overflow-y-auto space-y-4">
+        <div class="overflow-y-auto flex-1 p-5 space-y-4">
           <div>
             <label class="block text-sm font-medium text-slate-300 mb-2">اسم المحفظة</label>
-            <input v-model="newWallet.name" type="text" placeholder="مثال: نقدي، زين كاش، مصرف الرافدين" class="w-full bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 px-4 py-3">
+            <input v-model="newWallet.name" type="text" placeholder="مثال: نقدي، زين كاش، راتب الزوجة" class="w-full bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:ring-2 focus:ring-blue-500 px-4 py-3">
           </div>
-          
           <div>
             <label class="block text-sm font-medium text-slate-300 mb-2">النوع</label>
-            <select v-model="newWallet.type" class="w-full bg-slate-800 border border-slate-700 rounded-xl text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 px-4 py-3 appearance-none">
-              <option value="cash">نقدي</option>
+            <select v-model="newWallet.type" class="w-full bg-slate-800 border border-slate-700 rounded-xl text-white focus:ring-2 focus:ring-blue-500 px-4 py-3">
+              <option value="cash">نقدي (كاش)</option>
               <option value="zain_cash">زين كاش</option>
               <option value="super_cash">سوبر كاش</option>
               <option value="credit_card">كريدت كارد</option>
@@ -82,36 +78,25 @@
               <option value="other">أخرى</option>
             </select>
           </div>
-          
           <div>
-            <label class="block text-sm font-medium text-slate-300 mb-2">الرصيد الافتتاحي</label>
-            <div class="relative">
-              <input v-model.number="newWallet.currentBalance" type="number" placeholder="0" class="w-full bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 px-4 py-3 pe-12">
-              <div class="absolute inset-y-0 end-0 flex items-center pe-4 pointer-events-none text-slate-400">
-                د.ع
-              </div>
-            </div>
+            <label class="block text-sm font-medium text-slate-300 mb-2">الرصيد الابتدائي (د.ع)</label>
+            <input v-model.number="newWallet.currentBalance" type="number" placeholder="0" class="w-full bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:ring-2 focus:ring-blue-500 px-4 py-3">
           </div>
-          
           <div>
-            <label class="block text-sm font-medium text-slate-300 mb-2">الرمز (أيقونة)</label>
+            <label class="block text-sm font-medium text-slate-300 mb-2">الأيقونة</label>
             <div class="grid grid-cols-6 gap-2">
-              <button 
-                v-for="icon in icons" 
-                :key="icon" 
-                @click="newWallet.icon = icon"
-                type="button"
+              <button v-for="icon in icons" :key="icon" @click="newWallet.icon = icon" type="button"
                 class="h-12 flex items-center justify-center text-2xl rounded-xl border transition-colors"
-                :class="newWallet.icon === icon ? 'bg-blue-600/20 border-blue-500' : 'bg-slate-800 border-slate-700 hover:border-slate-500'"
-              >
+                :class="newWallet.icon === icon ? 'bg-blue-600/20 border-blue-500' : 'bg-slate-800 border-slate-700'">
                 {{ icon }}
               </button>
             </div>
           </div>
+          <div class="h-2"></div>
         </div>
-        
-        <div class="p-4 border-t border-slate-800 bg-slate-900 z-10 sticky bottom-0">
-          <button @click="saveWallet" :disabled="!isNewWalletValid" class="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-xl px-6 py-3 transition-colors">
+        <div class="p-4 border-t border-slate-800 flex-shrink-0">
+          <button @click="saveWallet" :disabled="!isNewWalletValid"
+            class="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white font-bold rounded-xl px-6 py-4 transition-colors">
             حفظ المحفظة
           </button>
         </div>
