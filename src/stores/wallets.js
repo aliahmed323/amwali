@@ -28,15 +28,23 @@ export const useWalletsStore = defineStore('wallets', () => {
   const fetchWallets = () => {
     loading.value = true
     const q = query(
-      collection(db, 'households', HOUSEHOLD_ID, 'wallets'),
-      orderBy('order')
+      collection(db, 'households', HOUSEHOLD_ID, 'wallets')
     )
     
     return onSnapshot(q, (snapshot) => {
-      wallets.value = snapshot.docs.map(doc => ({
+      let fetched = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }))
+      
+      // Sort in memory to allow displaying existing wallets missing 'order' field
+      fetched.sort((a, b) => {
+        const orderA = a.order !== undefined ? a.order : 999
+        const orderB = b.order !== undefined ? b.order : 999
+        return orderA - orderB
+      })
+      
+      wallets.value = fetched
       loading.value = false
     }, (error) => {
       console.error("Error fetching wallets:", error)
@@ -46,9 +54,15 @@ export const useWalletsStore = defineStore('wallets', () => {
 
   const addWallet = async (data) => {
     const walletsRef = collection(db, 'households', HOUSEHOLD_ID, 'wallets')
+    // Calculate next order
+    const nextOrder = wallets.value.length > 0 
+      ? Math.max(...wallets.value.map(w => w.order || 0)) + 1 
+      : 1
+      
     await addDoc(walletsRef, {
       ...data,
       currentBalance: data.currentBalance || 0,
+      order: nextOrder,
       createdAt: serverTimestamp()
     })
   }
