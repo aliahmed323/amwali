@@ -1,5 +1,5 @@
 <template>
-  <div v-if="show" class="fixed inset-0 z-50 flex flex-col justify-end">
+  <div v-if="show" class="fixed inset-0 z-[70] flex flex-col justify-end">
     <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="$emit('close')"></div>
     <div class="relative bg-slate-900 rounded-t-3xl w-full overflow-hidden flex flex-col" style="max-height: 88vh;">
       

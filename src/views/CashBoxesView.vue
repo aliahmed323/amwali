@@ -52,7 +52,7 @@
     </div>
 
     <!-- Add Cash Box Modal -->
-    <div v-if="showAddModal" class="fixed inset-0 z-50 flex flex-col justify-end bg-black/60 backdrop-blur-sm">
+    <div v-if="showAddModal" class="fixed inset-0 z-[70] flex flex-col justify-end bg-black/60 backdrop-blur-sm">
       <div class="bg-slate-900 rounded-t-3xl w-full flex flex-col" style="max-height: 85vh;">
         <div class="flex items-center justify-between px-5 py-4 border-b border-slate-800 flex-shrink-0">
           <h3 class="text-xl font-bold">إنشاء قاصة جديدة</h3>

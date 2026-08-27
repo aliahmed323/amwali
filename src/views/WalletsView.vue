@@ -54,8 +54,8 @@
     </div>
 
     <!-- Add Wallet Modal -->
-    <div v-if="showAddModal" class="fixed inset-0 z-50 flex flex-col justify-end bg-black/60 backdrop-blur-sm">
-      <div class="bg-slate-900 rounded-t-3xl w-full flex flex-col" style="max-height: 85vh;">
+    <div v-if="showAddModal" class="fixed inset-0 z-[70] flex flex-col justify-end bg-black/60 backdrop-blur-sm">
+      <div class="bg-slate-900 rounded-t-3xl w-full flex flex-col" style="max-height: 88vh;">
         <div class="flex items-center justify-between px-5 py-4 border-b border-slate-800 flex-shrink-0">
           <h3 class="text-xl font-bold">إضافة محفظة جديدة</h3>
           <button @click="showAddModal = false" class="text-slate-400 hover:text-white p-2 rounded-lg">
@@ -80,7 +80,18 @@
           </div>
           <div>
             <label class="block text-sm font-medium text-slate-300 mb-2">الرصيد الابتدائي (د.ع)</label>
-            <input v-model.number="newWallet.currentBalance" type="number" placeholder="0" class="w-full bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:ring-2 focus:ring-blue-500 px-4 py-3">
+            <input
+              type="text"
+              inputmode="numeric"
+              :value="displayBalance"
+              @input="onBalanceInput"
+              placeholder="0"
+              class="w-full bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:ring-2 focus:ring-blue-500 px-4 py-3 text-left"
+              dir="ltr"
+            >
+            <p v-if="newWallet.currentBalance > 0" class="text-slate-400 text-sm mt-1 text-center">
+              {{ formatMoney(newWallet.currentBalance) }}
+            </p>
           </div>
           <div>
             <label class="block text-sm font-medium text-slate-300 mb-2">الأيقونة</label>
@@ -221,12 +232,19 @@ const icons = ['💵', '💳', '📱', '🏦', '💰', '🪙', '🛍️', '💼'
 const newWallet = ref({
   name: '',
   type: 'cash',
-  currentBalance: null,
+  currentBalance: 0,
   icon: '💵'
 })
+const displayBalance = ref('')
+
+const onBalanceInput = (e) => {
+  const raw = e.target.value.replace(/[^0-9]/g, '')
+  newWallet.value.currentBalance = raw ? parseInt(raw, 10) : 0
+  displayBalance.value = raw ? parseInt(raw, 10).toLocaleString('en-US') : ''
+}
 
 const isNewWalletValid = computed(() => {
-  return newWallet.value.name.trim() !== '' && newWallet.value.currentBalance !== null
+  return newWallet.value.name.trim() !== ''
 })
 
 const saveWallet = async () => {
@@ -236,7 +254,8 @@ const saveWallet = async () => {
     currentBalance: Number(newWallet.value.currentBalance)
   })
   showAddModal.value = false
-  newWallet.value = { name: '', type: 'cash', currentBalance: null, icon: '💵' }
+  newWallet.value = { name: '', type: 'cash', currentBalance: 0, icon: '💵' }
+  displayBalance.value = ''
 }
 
 // Wallet Detail
