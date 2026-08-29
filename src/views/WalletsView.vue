@@ -54,8 +54,10 @@
     </div>
 
     <!-- Add Wallet Modal -->
-    <div v-if="showAddModal" class="fixed inset-0 z-[70] flex flex-col justify-end bg-black/60 backdrop-blur-sm">
-      <div class="bg-slate-900 rounded-t-3xl w-full flex flex-col" style="max-height: 88vh;">
+    <!-- Add Wallet Modal -->
+    <div v-if="showAddModal" class="fixed inset-0 z-[70] flex flex-col justify-end">
+      <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="showAddModal = false" @touchmove.prevent></div>
+      <div class="relative bg-slate-900 rounded-t-3xl w-full flex flex-col overflow-hidden" style="max-height: 88vh;">
         <div class="flex items-center justify-between px-5 py-4 border-b border-slate-800 flex-shrink-0">
           <h3 class="text-xl font-bold">إضافة محفظة جديدة</h3>
           <button @click="showAddModal = false" class="text-slate-400 hover:text-white p-2 rounded-lg">
@@ -115,9 +117,10 @@
     </div>
 
     <!-- Wallet Detail Modal -->
-    <div v-if="selectedWallet" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm" @click.self="selectedWallet = null">
-      <div class="bg-slate-900 rounded-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
-        <div class="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900 z-10 sticky top-0">
+    <div v-if="selectedWallet" class="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-4">
+      <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="selectedWallet = null" @touchmove.prevent></div>
+      <div class="relative bg-slate-900 rounded-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
+        <div class="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900 z-10 sticky top-0 flex-shrink-0">
           <div class="flex items-center gap-3">
             <div class="w-10 h-10 bg-slate-800 rounded-xl flex items-center justify-center text-xl">
               {{ selectedWallet.icon }}

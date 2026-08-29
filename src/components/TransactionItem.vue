@@ -18,8 +18,9 @@
           <span v-if="transaction.spenderName" class="text-[10px] bg-slate-700 text-slate-300 px-1.5 py-0.5 rounded-full whitespace-nowrap">{{ transaction.spenderName }}</span>
         </div>
         <div class="text-xs text-slate-500 truncate mt-0.5">
-          <span v-if="transaction.type === 'transfer'">{{ transaction.walletName }} ← {{ transaction.toWalletName || 'محفظة' }}</span>
-          <span v-else>{{ transaction.categoryName }} • {{ transaction.walletName }}</span>
+          <span v-if="transaction.type === 'transfer'">تحويل: من {{ transaction.walletName }} إلى {{ transaction.toWalletName || 'محفظة' }}</span>
+          <span v-else-if="transaction.type === 'expense'">{{ transaction.categoryName }} • صُرف من: {{ transaction.walletName || 'غير معروف' }}</span>
+          <span v-else>{{ transaction.categoryName }} • أُضيف إلى: {{ transaction.walletName || 'غير معروف' }}</span>
         </div>
       </div>
 

@@ -53,8 +53,9 @@
     </div>
 
     <!-- Add Cash Box Modal -->
-    <div v-if="showAddModal" class="fixed inset-0 z-[70] flex flex-col justify-end bg-black/60 backdrop-blur-sm">
-      <div class="bg-slate-900 rounded-t-3xl w-full flex flex-col" style="max-height: 85vh;">
+    <div v-if="showAddModal" class="fixed inset-0 z-[70] flex flex-col justify-end">
+      <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="showAddModal = false" @touchmove.prevent></div>
+      <div class="relative bg-slate-900 rounded-t-3xl w-full overflow-hidden flex flex-col" style="max-height: 85vh;">
         <div class="flex items-center justify-between px-5 py-4 border-b border-slate-800 flex-shrink-0">
           <h3 class="text-xl font-bold">إنشاء قاصة جديدة</h3>
           <button @click="showAddModal = false" class="text-slate-400 hover:text-white p-2 rounded-lg">
@@ -131,9 +132,10 @@
     </div>
 
     <!-- Box Detail Modal -->
-    <div v-if="selectedBox" class="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm" @click.self="selectedBox = null">
-      <div class="bg-slate-900 rounded-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
-        <div class="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900 z-10 sticky top-0">
+    <div v-if="selectedBox" class="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-4">
+      <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="selectedBox = null" @touchmove.prevent></div>
+      <div class="relative bg-slate-900 rounded-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
+        <div class="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900 z-10 sticky top-0 flex-shrink-0">
           <div class="flex items-center gap-3">
             <div class="w-10 h-10 bg-slate-800 rounded-xl flex items-center justify-center text-xl">
               {{ selectedBox.icon }}
@@ -186,8 +188,9 @@
     </div>
 
     <!-- Deposit/Withdraw Modal -->
-    <div v-if="txModal.show" class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
-      <div class="bg-slate-900 rounded-2xl w-full max-w-sm p-6 border border-slate-800">
+    <div v-if="txModal.show" class="fixed inset-0 z-[80] flex items-center justify-center p-4">
+      <div class="absolute inset-0 bg-black/70 backdrop-blur-sm" @click="txModal.show = false" @touchmove.prevent></div>
+      <div class="relative bg-slate-900 rounded-2xl w-full max-w-sm p-6 border border-slate-800">
         <h3 class="text-xl font-bold mb-4" :class="txModal.type === 'deposit' ? 'text-emerald-400' : 'text-rose-400'">
           {{ txModal.type === 'deposit' ? 'إيداع في القاصة' : 'سحب من القاصة' }}
         </h3>

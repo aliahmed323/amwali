@@ -83,10 +83,14 @@ export const useWalletsStore = defineStore('wallets', () => {
   const adjustBalance = async (walletId, amount) => {
     if (!walletId) return
     const walletRef = doc(db, 'households', HOUSEHOLD_ID, 'wallets', walletId)
-    await updateDoc(walletRef, {
-      currentBalance: increment(amount),
-      updatedAt: serverTimestamp()
-    })
+    try {
+      await updateDoc(walletRef, {
+        currentBalance: increment(amount),
+        updatedAt: serverTimestamp()
+      })
+    } catch (error) {
+      console.warn(`Could not adjust balance for wallet ${walletId}. It may have been deleted.`, error)
+    }
   }
 
   const initDefaultWallets = async () => {
