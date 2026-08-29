@@ -30,10 +30,15 @@
           <div class="text-slate-500 text-sm transform -scale-x-100">➜</div>
         </router-link>
 
-        <button @click="showCalculator = true" class="w-full flex items-center gap-4 p-4 hover:bg-slate-800/50 transition-colors">
+        <button @click="showCalculator = true" class="w-full flex items-center gap-4 p-4 hover:bg-slate-800/50 border-b border-slate-800/50 transition-colors">
           <div class="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-xl">🧮</div>
           <div class="flex-1 font-medium text-start text-slate-200">الحاسبة</div>
           <div class="text-slate-500 text-sm transform -scale-x-100">➜</div>
+        </button>
+
+        <button @click="showCycleConfirm = true" class="w-full flex items-center gap-4 p-4 hover:bg-slate-800/50 transition-colors">
+          <div class="w-10 h-10 rounded-xl bg-rose-500/10 flex items-center justify-center text-xl">📅</div>
+          <div class="flex-1 font-medium text-start text-rose-400">إغلاق الدورة المالية وبدء دورة جديدة</div>
         </button>
       </div>
 
@@ -68,6 +73,17 @@
       @confirm="handleLogout"
       @cancel="showLogoutConfirm = false"
     />
+
+    <!-- Cycle Reset Confirmation -->
+    <ConfirmDialog
+      :show="showCycleConfirm"
+      title="إغلاق الدورة المالية"
+      message="هل أنت متأكد أنك تريد إغلاق الشهر الحالي وبدء شهر/دورة مالية جديدة من اليوم؟ (هذا سيجعل تقارير هذا الشهر مؤرشفة ويبدأ عداد الإيرادات والمصروفات من الصفر للدورة الجديدة، لكن أرصدة المحافظ لن تتأثر)."
+      confirmText="بدء دورة جديدة"
+      variant="danger"
+      @confirm="handleCycleReset"
+      @cancel="showCycleConfirm = false"
+    />
   </div>
 </template>
 
@@ -75,19 +91,32 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useTransactionsStore } from '@/stores/transactions'
+import { useSettingsStore } from '@/stores/settings'
 import TopBar from '@/components/TopBar.vue'
 import CalculatorModal from '@/components/CalculatorModal.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
+const txStore = useTransactionsStore()
+const settingsStore = useSettingsStore()
 
 const showCalculator = ref(false)
 const showLogoutConfirm = ref(false)
+const showCycleConfirm = ref(false)
 
 const handleLogout = async () => {
   await authStore.logout()
   showLogoutConfirm.value = false
   router.push('/login')
+}
+
+const handleCycleReset = async () => {
+  const currentIncome = txStore.monthIncome
+  const currentExpense = txStore.monthExpense
+  await settingsStore.archiveCurrentCycle(currentIncome, currentExpense)
+  showCycleConfirm.value = false
+  alert('تم أرشفة الدورة المالية السابقة والبدء بدورة جديدة لهذا اليوم.')
 }
 </script>

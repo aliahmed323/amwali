@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 import { db, HOUSEHOLD_ID } from '../firebase.js'
 import { collection, doc, addDoc, deleteDoc, onSnapshot, query, orderBy, limit, serverTimestamp } from 'firebase/firestore'
 import { useWalletsStore } from './wallets.js'
+import { useSettingsStore } from './settings.js'
 
 export const useTransactionsStore = defineStore('transactions', () => {
   const transactions = ref([])
@@ -23,16 +24,18 @@ export const useTransactionsStore = defineStore('transactions', () => {
   })
 
   const monthIncome = computed(() => {
-    const month = new Date().toISOString().slice(0, 7)
+    const settingsStore = useSettingsStore()
+    const cycleStart = settingsStore.activeCycleStart
     return transactions.value
-      .filter(t => t.type === 'income' && t.date && t.date.startsWith(month))
+      .filter(t => t.type === 'income' && t.date && t.date >= cycleStart)
       .reduce((sum, t) => sum + (Number(t.amount) || 0), 0)
   })
 
   const monthExpense = computed(() => {
-    const month = new Date().toISOString().slice(0, 7)
+    const settingsStore = useSettingsStore()
+    const cycleStart = settingsStore.activeCycleStart
     return transactions.value
-      .filter(t => t.type === 'expense' && t.date && t.date.startsWith(month))
+      .filter(t => t.type === 'expense' && t.date && t.date >= cycleStart)
       .reduce((sum, t) => sum + (Number(t.amount) || 0), 0)
   })
 

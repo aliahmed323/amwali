@@ -17,9 +17,16 @@ const showAddModal = ref(false);
 const openAddModal = () => { showAddModal.value = true; };
 const closeAddModal = () => { showAddModal.value = false; };
 
+import { useSettingsStore } from './stores/settings';
+
 // بمجرد أن يتأكد Firebase من الجلسة، نوجه المستخدم للصفحة الصحيحة
 watch(() => authStore.authReady, (ready) => {
   if (!ready) return;
+  if (authStore.isAuthenticated) {
+    const settingsStore = useSettingsStore();
+    settingsStore.fetchSettings();
+  }
+
   if (authStore.isAuthenticated && isLoginRoute.value) {
     router.replace('/');
   } else if (!authStore.isAuthenticated && !isLoginRoute.value) {

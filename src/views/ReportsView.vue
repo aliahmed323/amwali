@@ -156,32 +156,33 @@ import TopBar from '@/components/TopBar.vue';
 import StatsCard from '@/components/StatsCard.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import { useTransactionsStore } from '@/stores/transactions';
+import { useSettingsStore } from '@/stores/settings';
 import { formatMoney, formatDate } from '@/utils/formatters';
 
 const transactionsStore = useTransactionsStore();
+const settingsStore = useSettingsStore();
 
 const periods = [
-  { label: 'هذا الشهر', value: 'this_month' },
-  { label: 'الشهر السابق', value: 'last_month' },
+  { label: 'الدورة الحالية', value: 'this_cycle' },
+  { label: 'الدورة السابقة', value: 'last_cycle' },
   { label: 'آخر 3 أشهر', value: 'last_3_months' },
   { label: 'سنوي', value: 'this_year' },
 ];
 
-const selectedPeriod = ref('this_month');
+const selectedPeriod = ref('this_cycle');
 
 // Filter transactions by selected period
 const filteredTransactions = computed(() => {
   const txs = transactionsStore.transactions;
   const now = new Date();
-  const currentMonthStr = now.toISOString().slice(0, 7);
   
-  if (selectedPeriod.value === 'this_month') {
-    return txs.filter(tx => tx.date.startsWith(currentMonthStr));
+  if (selectedPeriod.value === 'this_cycle') {
+    return txs.filter(tx => tx.date >= settingsStore.activeCycleStart);
   } 
-  else if (selectedPeriod.value === 'last_month') {
-    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const lastMonthStr = lastMonth.toISOString().slice(0, 7);
-    return txs.filter(tx => tx.date.startsWith(lastMonthStr));
+  else if (selectedPeriod.value === 'last_cycle') {
+    const prevCycle = settingsStore.previousCycles[0];
+    if (!prevCycle) return [];
+    return txs.filter(tx => tx.date >= prevCycle.startDate && tx.date <= prevCycle.endDate);
   }
   else if (selectedPeriod.value === 'last_3_months') {
     const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 2, 1);
@@ -209,9 +210,26 @@ const reportData = computed(() => {
   const net = income - expense;
   const savingsRate = income > 0 ? ((net / income) * 100).toFixed(1) : 0;
   
-  // Fake calculation for monthly change just for UI demo purposes (would need historical data processing ideally)
-  const incomeChange = 5.2; // Example positive growth
-  const expenseChange = -2.1; // Example expense reduction
+  // Real calculation for cycle change
+  let incomeChange = 0;
+  let expenseChange = 0;
+  
+  if (selectedPeriod.value === 'this_cycle') {
+    const prevCycle = settingsStore.previousCycles[0];
+    if (prevCycle) {
+      if (prevCycle.income > 0) {
+        incomeChange = ((income - prevCycle.income) / prevCycle.income) * 100;
+      } else if (income > 0) {
+        incomeChange = 100;
+      }
+      
+      if (prevCycle.expense > 0) {
+        expenseChange = ((expense - prevCycle.expense) / prevCycle.expense) * 100;
+      } else if (expense > 0) {
+        expenseChange = 100;
+      }
+    }
+  }
 
   return { income, expense, net, savingsRate, incomeChange, expenseChange };
 });
