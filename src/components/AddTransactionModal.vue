@@ -233,6 +233,16 @@ watch(() => form.value.type, () => {
 const save = async () => {
   errorMsg.value = ''
   if (!isValid.value) return
+  
+  // التحقق من الرصيد قبل السحب
+  if (form.value.type === 'expense' || form.value.type === 'transfer') {
+    const wallet = walletsStore.getWalletById(form.value.walletId)
+    if (!wallet || form.value.amount > wallet.currentBalance) {
+      errorMsg.value = 'عذراً، الرصيد في المحفظة لا يكفي لإتمام هذه المعاملة.'
+      return
+    }
+  }
+
   loading.value = true
   try {
     await transactionsStore.addTransaction({

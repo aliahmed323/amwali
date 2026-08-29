@@ -78,8 +78,8 @@ const isTodayDone = computed(() => {
 })
 
 const progress = computed(() => {
-  if (!props.box.targetAmount || props.box.targetAmount === 0) return 0
-  return Math.round((props.box.currentAmount / props.box.targetAmount) * 100)
+  if (!props.box.targetAmount || Number(props.box.targetAmount) === 0) return 0
+  return Math.round((Number(props.box.currentAmount) || 0) / Number(props.box.targetAmount) * 100)
 })
 
 const isCompleted = computed(() => {

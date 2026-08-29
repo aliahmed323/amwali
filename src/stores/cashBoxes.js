@@ -53,6 +53,16 @@ export const useCashBoxesStore = defineStore('cashBoxes', () => {
     const today = todayStr()
     if (box.lastContributionDate === today) return
     const amount = Number(box.dailyAmount)
+
+    // Check if auto mode has enough funds
+    if (box.contributionMode === 'auto' && box.linkedWalletId && walletStore) {
+      const wallet = walletStore.wallets.find(w => w.id === box.linkedWalletId)
+      if (!wallet || wallet.currentBalance < amount) {
+        console.warn(`Auto contribution skipped: Insufficient balance in wallet for box "${box.title}"`)
+        return
+      }
+    }
+
     const boxRef = doc(db, 'households', HOUSEHOLD_ID, 'cash_boxes', boxId)
     const newAmount = (Number(box.currentAmount) || 0) + amount
     await updateDoc(boxRef, {

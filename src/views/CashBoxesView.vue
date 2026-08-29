@@ -69,7 +69,13 @@
           </div>
           <div>
             <label class="block text-sm font-medium text-slate-300 mb-2">المبلغ المستهدف (د.ع)</label>
-            <input v-model.number="newBox.targetAmount" type="number" placeholder="0" class="w-full bg-slate-800 border border-slate-700 rounded-xl text-white px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none">
+            <input
+              type="text" inputmode="numeric"
+              :value="displayTargetAmount"
+              @input="onTargetAmountInput"
+              placeholder="0"
+              class="w-full bg-slate-800 border border-slate-700 rounded-xl text-white px-4 py-3 focus:ring-2 focus:ring-blue-500 outline-none"
+            >
           </div>
           <div>
             <label class="block text-sm font-medium text-slate-300 mb-2">تاريخ الهدف (اختياري)</label>
@@ -160,12 +166,13 @@
               <span class="text-2xl font-bold text-white">{{ formatMoney(selectedBox.currentAmount) }}</span>
               <span class="text-lg font-medium text-slate-500">{{ formatMoney(selectedBox.targetAmount) }}</span>
             </div>
-            
-            <div class="w-full bg-slate-800 rounded-full h-3 mb-2 overflow-hidden">
-              <div class="bg-amber-500 h-3 rounded-full transition-all" :style="`width: ${Math.min((selectedBox.currentAmount / selectedBox.targetAmount) * 100, 100)}%`"></div>
-            </div>
-            <div class="text-center text-sm font-medium text-amber-400">
-              {{ Math.round((selectedBox.currentAmount / selectedBox.targetAmount) * 100) }}% مكتمل
+            <div class="space-y-2">
+              <div class="w-full bg-slate-800 rounded-full h-3 overflow-hidden">
+                <div class="bg-amber-500 h-3 rounded-full transition-all" :style="`width: ${Math.min(selectedBox.targetAmount ? (selectedBox.currentAmount / selectedBox.targetAmount) * 100 : 0, 100).toFixed(1)}%`"></div>
+              </div>
+              <p class="text-sm text-end text-slate-400">
+                {{ selectedBox.targetAmount ? Math.round((selectedBox.currentAmount / selectedBox.targetAmount) * 100) : 0 }}% مكتمل
+              </p>
             </div>
           </div>
 
@@ -199,7 +206,12 @@
           <div>
             <label class="block text-sm font-medium text-slate-300 mb-2">المبلغ</label>
             <div class="relative">
-              <input v-model.number="txModal.amount" type="number" class="w-full bg-slate-800 border border-slate-700 rounded-xl text-white px-4 py-3 pe-12 focus:ring-2 focus:ring-blue-500 outline-none">
+              <input
+                type="text" inputmode="numeric"
+                :value="displayTxAmount"
+                @input="onTxAmountInput"
+                class="w-full bg-slate-800 border border-slate-700 rounded-xl text-white px-4 py-3 pe-12 focus:ring-2 focus:ring-blue-500 outline-none"
+              >
               <div class="absolute inset-y-0 end-0 flex items-center pe-4 pointer-events-none text-slate-400">د.ع</div>
             </div>
           </div>
@@ -213,7 +225,7 @@
           <button @click="txModal.show = false" class="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-xl py-3 transition-colors">
             إلغاء
           </button>
-          <button @click="submitBoxTx" :disabled="!txModal.amount || txModal.amount <= 0" class="flex-1 font-medium rounded-xl py-3 transition-colors disabled:opacity-50 text-white" :class="txModal.type === 'deposit' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-rose-600 hover:bg-rose-700'">
+          <button @click="submitBoxTx" :disabled="!txModal.amount || txModal.amount <= 0 || (txModal.type === 'withdraw' && txModal.amount > txModal.box.currentAmount)" class="flex-1 font-medium rounded-xl py-3 transition-colors disabled:opacity-50 text-white" :class="txModal.type === 'deposit' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-rose-600 hover:bg-rose-700'">
             تأكيد
           </button>
         </div>
@@ -265,11 +277,25 @@ const newBox = ref({
 })
 
 const displayDailyAmount = ref('')
+const displayTargetAmount = ref('')
+const displayTxAmount = ref('')
 
 const onDailyAmountInput = (e) => {
   const raw = e.target.value.replace(/[^0-9]/g, '')
   newBox.value.dailyAmount = raw ? parseInt(raw, 10) : 0
   displayDailyAmount.value = raw ? parseInt(raw, 10).toLocaleString('en-US') : ''
+}
+
+const onTargetAmountInput = (e) => {
+  const raw = e.target.value.replace(/[^0-9]/g, '')
+  newBox.value.targetAmount = raw ? parseInt(raw, 10) : 0
+  displayTargetAmount.value = raw ? parseInt(raw, 10).toLocaleString('en-US') : ''
+}
+
+const onTxAmountInput = (e) => {
+  const raw = e.target.value.replace(/[^0-9]/g, '')
+  txModal.value.amount = raw ? parseInt(raw, 10) : 0
+  displayTxAmount.value = raw ? parseInt(raw, 10).toLocaleString('en-US') : ''
 }
 
 const isNewBoxValid = computed(() => {
@@ -279,6 +305,14 @@ const isNewBoxValid = computed(() => {
 const addingBoxId = ref(null)
 
 const quickAddToday = async (box) => {
+  if (box.contributionMode === 'auto' && box.linkedWalletId) {
+    const wallet = walletsStore.wallets.find(w => w.id === box.linkedWalletId)
+    if (!wallet || wallet.currentBalance < box.dailyAmount) {
+      alert(`عذراً، رصيد محفظة ${wallet?.name || ''} غير كافٍ لإضافة ${formatMoney(box.dailyAmount)} د.ع للقاصة.`)
+      return
+    }
+  }
+
   addingBoxId.value = box.id
   await cashBoxesStore.addDailyContribution(box.id, walletsStore)
   addingBoxId.value = null
@@ -293,6 +327,8 @@ const saveCashBox = async () => {
   })
   showAddModal.value = false
   newBox.value = { title: '', targetAmount: null, targetDate: '', icon: '🏠', dailyAmount: 0, contributionMode: 'manual', linkedWalletId: '' }
+  displayDailyAmount.value = ''
+  displayTargetAmount.value = ''
   displayDailyAmount.value = ''
 }
 
@@ -312,10 +348,12 @@ const txModal = ref({
 })
 
 const openDepositModal = (box) => {
+  displayTxAmount.value = ''
   txModal.value = { show: true, type: 'deposit', amount: null, note: '', box }
 }
 
 const openWithdrawModal = (box) => {
+  displayTxAmount.value = ''
   txModal.value = { show: true, type: 'withdraw', amount: null, note: '', box }
 }
 
@@ -323,12 +361,15 @@ const submitBoxTx = async () => {
   const { type, amount, note, box } = txModal.value
   if (!amount || amount <= 0 || !box) return
 
+  if (type === 'withdraw' && amount > box.currentAmount) {
+    alert('عذراً، المبلغ المطلوب سحبه أكبر من الرصيد المتوفر في القاصة.')
+    return
+  }
+
   if (type === 'deposit') {
     await cashBoxesStore.deposit(box.id, amount, note)
   } else {
-    // Only withdraw up to current amount
-    const actualAmount = Math.min(amount, box.currentAmount)
-    await cashBoxesStore.withdraw(box.id, actualAmount, note)
+    await cashBoxesStore.withdraw(box.id, amount, note)
   }
   
   if (selectedBox.value && selectedBox.value.id === box.id) {

@@ -137,11 +137,11 @@
                 <span class="text-sm text-white font-medium">{{ box.title }}</span>
               </div>
               <span class="text-xs text-emerald-400 font-medium">
-                {{ Math.round((box.currentAmount / box.targetAmount) * 100) }}%
+                {{ box.targetAmount ? Math.round((box.currentAmount / box.targetAmount) * 100) : 0 }}%
               </span>
             </div>
             <div class="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
-              <div class="bg-emerald-500 h-1.5 rounded-full" :style="{ width: `${Math.min(100, (box.currentAmount / box.targetAmount) * 100)}%` }"></div>
+              <div class="bg-emerald-500 h-1.5 rounded-full" :style="{ width: `${Math.min(100, box.targetAmount ? (box.currentAmount / box.targetAmount) * 100 : 0).toFixed(1)}%` }"></div>
             </div>
           </div>
         </div>
@@ -198,6 +198,14 @@ const savingsGroupsStore = useSavingsGroupsStore();
 const addingId = ref(null);
 
 const addTodayContribution = async (box) => {
+  if (box.contributionMode === 'auto' && box.linkedWalletId) {
+    const wallet = walletsStore.wallets.find(w => w.id === box.linkedWalletId)
+    if (!wallet || wallet.currentBalance < box.dailyAmount) {
+      alert(`عذراً، رصيد المحفظة غير كافٍ لإضافة المبلغ للقاصة.`)
+      return
+    }
+  }
+
   addingId.value = box.id;
   await cashBoxesStore.addDailyContribution(box.id, walletsStore);
   addingId.value = null;
@@ -245,7 +253,7 @@ const alerts = computed(() => {
 
   // Cash boxes nearly complete
   cashBoxesStore.activeBoxes.forEach(box => {
-    const percentage = (box.currentAmount / box.targetAmount) * 100;
+    const percentage = box.targetAmount ? (box.currentAmount / box.targetAmount) * 100 : 0;
     if (percentage >= 90 && percentage < 100) {
       generatedAlerts.push({
         icon: '🎯',
