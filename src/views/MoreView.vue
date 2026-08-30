@@ -53,7 +53,7 @@
         <button @click="showLogoutConfirm = true" class="w-full bg-rose-600/10 hover:bg-rose-600/20 text-rose-400 font-medium rounded-xl py-3 border border-rose-500/20 transition-colors">
           تسجيل الخروج
         </button>
-        <p class="text-xs text-slate-500 mt-4">الإصدار v3.0.0</p>
+        <p class="text-xs text-slate-500 mt-4">الإصدار v5.0.0</p>
       </div>
     </div>
 
