@@ -83,6 +83,7 @@ const progress = computed(() => {
 })
 
 const isCompleted = computed(() => {
-  return props.box.status === 'completed' || props.box.currentAmount >= props.box.targetAmount
+  if (!props.box.targetAmount || Number(props.box.targetAmount) === 0) return false
+  return props.box.status === 'completed' || Number(props.box.currentAmount) >= Number(props.box.targetAmount)
 })
 </script>

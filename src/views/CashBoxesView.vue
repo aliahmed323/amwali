@@ -186,8 +186,33 @@
           </div>
 
           <div class="border-t border-slate-800 pt-4">
-            <button @click="confirmDeleteBox" class="w-full text-rose-400 text-sm font-medium py-2">
-              حذف القاصة
+            <h4 class="text-sm font-bold text-slate-300 mb-3">سجل العمليات</h4>
+            <div v-if="cashBoxesStore.logs.length === 0" class="text-xs text-center text-slate-500 py-4">
+              لا توجد عمليات بعد
+            </div>
+            <div v-else class="space-y-2 max-h-48 overflow-y-auto hide-scrollbar">
+              <div v-for="log in cashBoxesStore.logs" :key="log.id" class="flex justify-between items-center bg-slate-800/50 p-2 rounded-xl border border-slate-700/50">
+                <div>
+                  <p class="text-xs font-bold text-white">{{ log.type === 'withdraw' ? 'سحب' : log.type === 'daily' ? 'مساهمة يومية' : 'إيداع' }}</p>
+                  <p class="text-[10px] text-slate-400">
+                    {{ log.createdAt?.toDate ? formatDate(log.createdAt.toDate().toISOString().split('T')[0]) : formatDate(new Date().toISOString().split('T')[0]) }}
+                  </p>
+                </div>
+                <div class="flex items-center gap-3">
+                  <span class="text-sm font-bold" :class="log.type === 'withdraw' ? 'text-rose-400' : 'text-emerald-400'">
+                    {{ log.type === 'withdraw' ? '-' : '+' }}{{ formatMoney(log.amount) }}
+                  </span>
+                  <button @click="handleDeleteLog(log)" class="text-rose-400 p-1 hover:bg-rose-500/20 rounded transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="border-t border-slate-800 pt-4">
+            <button @click="confirmDeleteBox" class="w-full bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-sm font-medium py-3 rounded-xl border border-rose-500/20 transition-colors">
+              حذف القاصة بالكامل
             </button>
           </div>
         </div>
@@ -253,7 +278,7 @@ import TopBar from '@/components/TopBar.vue'
 import CashBoxCard from '@/components/CashBoxCard.vue'
 import EmptyState from '@/components/EmptyState.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
-import { formatMoney } from '@/utils/formatters'
+import { formatMoney, formatDate } from '@/utils/formatters'
 
 const cashBoxesStore = useCashBoxesStore()
 const walletsStore = useWalletsStore()
@@ -262,6 +287,14 @@ onMounted(() => {
   cashBoxesStore.fetchCashBoxes()
   cashBoxesStore.runAutoContributions(walletsStore)
 })
+
+const handleDeleteLog = async (log) => {
+  if (confirm('هل أنت متأكد من حذف هذه العملية والتراجع عنها؟')) {
+    await cashBoxesStore.deleteLog(selectedBox.value.id, log, walletsStore)
+    // Update local selectedBox visually
+    selectedBox.value = cashBoxesStore.cashBoxes.find(b => b.id === selectedBox.value.id)
+  }
+}
 
 // Add Box
 const showAddModal = ref(false)
@@ -334,8 +367,9 @@ const saveCashBox = async () => {
 
 // Box Detail
 const selectedBox = ref(null)
-const openBoxDetail = (box) => {
+const openBoxDetail = async (box) => {
   selectedBox.value = box
+  await cashBoxesStore.fetchLogs(box.id)
 }
 
 // Deposit/Withdraw

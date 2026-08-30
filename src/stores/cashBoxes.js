@@ -68,7 +68,7 @@ export const useCashBoxesStore = defineStore('cashBoxes', () => {
     await updateDoc(boxRef, {
       currentAmount: increment(amount),
       lastContributionDate: today,
-      status: newAmount >= (Number(box.targetAmount) || Infinity) ? 'completed' : 'active',
+      status: box.targetAmount ? (newAmount >= Number(box.targetAmount) ? 'completed' : 'active') : 'active',
       updatedAt: serverTimestamp()
     })
     if (box.contributionMode === 'auto' && box.linkedWalletId && walletStore) {
@@ -103,7 +103,7 @@ export const useCashBoxesStore = defineStore('cashBoxes', () => {
     const newAmount = (Number(box.currentAmount) || 0) + numAmount
     await updateDoc(boxRef, {
       currentAmount: increment(numAmount),
-      status: newAmount >= (Number(box.targetAmount) || 0) ? 'completed' : 'active',
+      status: box.targetAmount ? (newAmount >= Number(box.targetAmount) ? 'completed' : 'active') : 'active',
       updatedAt: serverTimestamp()
     })
   }
@@ -128,12 +128,47 @@ export const useCashBoxesStore = defineStore('cashBoxes', () => {
     return logs.value
   }
 
+  const deleteLog = async (boxId, log, walletStore = null) => {
+    const box = cashBoxes.value.find(b => b.id === boxId)
+    if (!box) return
+
+    // Reverse amount
+    let amountDiff = 0
+    if (log.type === 'deposit' || log.type === 'daily') amountDiff = -Number(log.amount)
+    if (log.type === 'withdraw') amountDiff = Number(log.amount)
+
+    const boxRef = doc(db, 'households', HOUSEHOLD_ID, 'cash_boxes', boxId)
+    
+    const updateData = {
+      currentAmount: increment(amountDiff),
+      updatedAt: serverTimestamp()
+    }
+
+    // If it was a daily contribution, reset lastContributionDate so they can add it again
+    if (log.type === 'daily') {
+      updateData.lastContributionDate = null
+      
+      // If it was auto, refund the wallet
+      if (box.contributionMode === 'auto' && box.linkedWalletId && walletStore) {
+        await walletStore.adjustBalance(box.linkedWalletId, Number(log.amount))
+      }
+    }
+
+    // Delete log doc
+    const logRef = doc(db, 'households', HOUSEHOLD_ID, 'cash_boxes', boxId, 'logs', log.id)
+    await deleteDoc(logRef)
+    await updateDoc(boxRef, updateData)
+    
+    // Refresh logs
+    await fetchLogs(boxId)
+  }
+
   return {
     cashBoxes, logs, loading,
     totalSaved, activeBoxes, completedBoxes,
     pendingTodayBoxes, doneTodayBoxes,
     fetchCashBoxes, addCashBox,
     addDailyContribution, runAutoContributions,
-    deposit, withdraw, deleteCashBox, fetchLogs
+    deposit, withdraw, deleteCashBox, fetchLogs, deleteLog
   }
 })

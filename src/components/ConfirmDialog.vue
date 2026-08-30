@@ -1,5 +1,5 @@
 <template>
-  <div v-if="show" class="fixed inset-0 z-[60] flex items-center justify-center p-4">
+  <div v-if="show" class="fixed inset-0 z-[90] flex items-center justify-center p-4">
     <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="$emit('cancel')"></div>
     <div class="relative bg-slate-900 rounded-2xl p-6 w-full max-w-sm mx-auto shadow-xl border border-slate-800 transform transition-all scale-100">
       <h3 class="text-lg font-bold text-white mb-2">{{ title }}</h3>
