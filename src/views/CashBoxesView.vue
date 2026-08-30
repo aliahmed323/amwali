@@ -210,7 +210,10 @@
             </div>
           </div>
 
-          <div class="border-t border-slate-800 pt-4">
+          <div class="border-t border-slate-800 pt-4 space-y-2">
+            <button @click="handleResetCycle" class="w-full bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 text-sm font-medium py-3 rounded-xl border border-amber-500/20 transition-colors">
+              تصفير الرصيد وبدء دورة جديدة
+            </button>
             <button @click="confirmDeleteBox" class="w-full bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 text-sm font-medium py-3 rounded-xl border border-rose-500/20 transition-colors">
               حذف القاصة بالكامل
             </button>
@@ -291,8 +294,15 @@ onMounted(() => {
 const handleDeleteLog = async (log) => {
   if (confirm('هل أنت متأكد من حذف هذه العملية والتراجع عنها؟')) {
     await cashBoxesStore.deleteLog(selectedBox.value.id, log, walletsStore)
-    // Update local selectedBox visually
     selectedBox.value = cashBoxesStore.cashBoxes.find(b => b.id === selectedBox.value.id)
+  }
+}
+
+const handleResetCycle = async () => {
+  if (confirm('هل أنت متأكد من تصفير رصيد هذه القاصة لبدء دورة جديدة؟ (لا يمكن التراجع)')) {
+    await cashBoxesStore.resetCashBoxCycle(selectedBox.value.id)
+    selectedBox.value = cashBoxesStore.cashBoxes.find(b => b.id === selectedBox.value.id)
+    await cashBoxesStore.fetchLogs(selectedBox.value.id)
   }
 }
 

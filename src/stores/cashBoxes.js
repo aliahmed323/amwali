@@ -121,6 +121,18 @@ export const useCashBoxesStore = defineStore('cashBoxes', () => {
     await deleteDoc(boxRef)
   }
 
+  const resetCashBoxCycle = async (boxId) => {
+    const boxRef = doc(db, 'households', HOUSEHOLD_ID, 'cash_boxes', boxId)
+    await updateDoc(boxRef, {
+      currentAmount: 0,
+      status: 'active',
+      lastContributionDate: null,
+      updatedAt: serverTimestamp()
+    })
+    const logsRef = collection(db, 'households', HOUSEHOLD_ID, 'cash_boxes', boxId, 'logs')
+    await addDoc(logsRef, { type: 'withdraw', amount: 0, note: 'تصفير وبدء دورة جديدة', createdAt: serverTimestamp() })
+  }
+
   const fetchLogs = async (boxId) => {
     const q = query(collection(db, 'households', HOUSEHOLD_ID, 'cash_boxes', boxId, 'logs'), orderBy('createdAt', 'desc'))
     const snapshot = await getDocs(q)
@@ -169,6 +181,6 @@ export const useCashBoxesStore = defineStore('cashBoxes', () => {
     pendingTodayBoxes, doneTodayBoxes,
     fetchCashBoxes, addCashBox,
     addDailyContribution, runAutoContributions,
-    deposit, withdraw, deleteCashBox, fetchLogs, deleteLog
+    deposit, withdraw, deleteCashBox, fetchLogs, deleteLog, resetCashBoxCycle
   }
 })
