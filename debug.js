@@ -1,18 +1,13 @@
 import puppeteer from 'puppeteer';
 
 (async () => {
-  const browser = await puppeteer.launch();
+  const browser = await puppeteer.launch({ headless: true });
   const page = await browser.newPage();
+  page.on('console', msg => console.log('BROWSER CONSOLE:', msg.text()));
+  page.on('pageerror', err => console.log('BROWSER ERROR:', err.message));
   
-  page.on('console', msg => console.log('BROWSER LOG:', msg.type(), msg.text()));
-  
-  await page.goto('http://localhost:5173', { waitUntil: 'networkidle0' });
-  
-  // Wait a bit for Vue to mount
-  await new Promise(r => setTimeout(r, 2000));
-  
-  const content = await page.evaluate(() => document.body.innerHTML);
-  console.log('HTML CONTENT:', content);
-  
+  await page.goto('http://localhost:4173/amwali/', { waitUntil: 'networkidle0' });
+  console.log('Page loaded successfully');
   await browser.close();
+  process.exit(0);
 })();

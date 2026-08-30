@@ -1,5 +1,20 @@
 import { createApp } from 'vue';
 import { createPinia } from 'pinia';
+
+// Global error handler to prevent silent white screens
+window.addEventListener('error', (event) => {
+  if (event.message && event.message.includes('Failed to fetch dynamically imported module')) {
+    console.warn('Chunk load error, reloading page...');
+    window.location.reload();
+  } else {
+    // Show error on screen for debugging if it causes a white screen
+    const errDiv = document.createElement('div');
+    errDiv.style = 'position:fixed;top:0;left:0;width:100%;background:red;color:white;z-index:9999;padding:10px;direction:ltr;font-size:12px;word-break:break-all;';
+    errDiv.innerText = `App Error: ${event.message} at ${event.filename}:${event.lineno}`;
+    document.body.appendChild(errDiv);
+  }
+});
+
 import App from './App.vue';
 import router from './router';
 import './style.css';
