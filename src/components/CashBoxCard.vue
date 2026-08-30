@@ -30,7 +30,7 @@
         ></div>
       </div>
       <div class="text-xs text-end" :class="isCompleted ? 'text-emerald-400' : 'text-slate-400'">
-        {{ progress }}%
+        {{ progress }}% مكتمل (المتبقي {{ Math.max(0, 100 - progress) }}%)
       </div>
     </div>
 

@@ -129,8 +129,16 @@ export const useCashBoxesStore = defineStore('cashBoxes', () => {
       lastContributionDate: null,
       updatedAt: serverTimestamp()
     })
+    
+    // Delete old logs for a fresh start
     const logsRef = collection(db, 'households', HOUSEHOLD_ID, 'cash_boxes', boxId, 'logs')
-    await addDoc(logsRef, { type: 'withdraw', amount: 0, note: 'تصفير وبدء دورة جديدة', createdAt: serverTimestamp() })
+    const q = query(logsRef)
+    const snapshot = await getDocs(q)
+    for (const logDoc of snapshot.docs) {
+      await deleteDoc(logDoc.ref)
+    }
+
+    await addDoc(logsRef, { type: 'deposit', amount: 0, note: 'بدء دورة جديدة (تصفير)', createdAt: serverTimestamp() })
   }
 
   const fetchLogs = async (boxId) => {
@@ -152,7 +160,7 @@ export const useCashBoxesStore = defineStore('cashBoxes', () => {
     const boxRef = doc(db, 'households', HOUSEHOLD_ID, 'cash_boxes', boxId)
     
     const updateData = {
-      currentAmount: increment(amountDiff),
+      currentAmount: Math.max(0, (Number(box.currentAmount) || 0) + amountDiff),
       updatedAt: serverTimestamp()
     }
 

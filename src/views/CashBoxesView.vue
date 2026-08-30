@@ -171,7 +171,7 @@
                 <div class="bg-amber-500 h-3 rounded-full transition-all" :style="`width: ${Math.min(selectedBox.targetAmount ? (selectedBox.currentAmount / selectedBox.targetAmount) * 100 : 0, 100).toFixed(1)}%`"></div>
               </div>
               <p class="text-sm text-end text-slate-400">
-                {{ selectedBox.targetAmount ? Math.round((selectedBox.currentAmount / selectedBox.targetAmount) * 100) : 0 }}% مكتمل
+                {{ selectedBox.targetAmount ? Math.round((selectedBox.currentAmount / selectedBox.targetAmount) * 100) : 0 }}% مكتمل (المتبقي {{ selectedBox.targetAmount ? Math.max(0, 100 - Math.round((selectedBox.currentAmount / selectedBox.targetAmount) * 100)) : 0 }}%)
               </p>
             </div>
           </div>
