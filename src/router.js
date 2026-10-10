@@ -11,6 +11,7 @@ const routes = [
   { path: '/savings-groups',name: 'savings-groups',  component: () => import('./views/SavingsGroupsView.vue'), meta: { requiresAuth: true } },
   { path: '/reports',       name: 'reports',         component: () => import('./views/ReportsView.vue'),       meta: { requiresAuth: true } },
   { path: '/more',          name: 'more',            component: () => import('./views/MoreView.vue'),          meta: { requiresAuth: true } },
+  { path: '/categories',    name: 'categories',      component: () => import('./views/CategoriesView.vue'),    meta: { requiresAuth: true } },
 ];
 
 const router = createRouter({

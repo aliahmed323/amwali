@@ -118,7 +118,7 @@
 
     <!-- Wallet Detail Modal -->
     <div v-if="selectedWallet" class="fixed inset-0 z-[70] flex items-end sm:items-center justify-center p-4">
-      <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="selectedWallet = null" @touchmove.prevent></div>
+      <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" @click="closeWalletDetail" @touchmove.prevent></div>
       <div class="relative bg-slate-900 rounded-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
         <div class="p-4 border-b border-slate-800 flex justify-between items-center bg-slate-900 z-10 sticky top-0 flex-shrink-0">
           <div class="flex items-center gap-3">
@@ -127,7 +127,7 @@
             </div>
             <h3 class="text-xl font-bold">{{ selectedWallet.name }}</h3>
           </div>
-          <button @click="selectedWallet = null" class="text-slate-400 hover:text-white p-2">
+          <button @click="closeWalletDetail" class="text-slate-400 hover:text-white p-2">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -143,7 +143,7 @@
           </div>
           
           <div class="flex gap-2">
-            <button @click="showEditBalanceModal = true" class="flex-1 bg-slate-800 hover:bg-slate-700 text-white text-sm font-medium rounded-xl py-2 transition-colors border border-slate-700">
+            <button @click="openEditBalance" class="flex-1 bg-slate-800 hover:bg-slate-700 text-white text-sm font-medium rounded-xl py-2 transition-colors border border-slate-700">
               تعديل الرصيد
             </button>
             <button @click="confirmDeleteWallet" class="flex-1 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 text-sm font-medium rounded-xl py-2 transition-colors border border-rose-500/20">
@@ -175,7 +175,7 @@
     </div>
 
     <!-- Edit Balance Modal -->
-    <div v-if="showEditBalanceModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+    <div v-if="showEditBalanceModal" class="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
       <div class="bg-slate-900 rounded-2xl w-full max-w-sm p-6 border border-slate-800">
         <h3 class="text-xl font-bold mb-4">تعديل الرصيد</h3>
         <p class="text-sm text-slate-400 mb-4">أدخل الرصيد الصحيح للمحفظة. سيتم إنشاء معاملة تسوية بالفرق.</p>
@@ -191,7 +191,7 @@
           <button @click="showEditBalanceModal = false" class="flex-1 bg-slate-800 hover:bg-slate-700 text-white font-medium rounded-xl py-3 transition-colors">
             إلغاء
           </button>
-          <button @click="saveEditedBalance" :disabled="newBalance === null || newBalance === selectedWallet?.currentBalance" class="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium rounded-xl py-3 transition-colors">
+          <button @click="saveEditedBalance" :disabled="newBalance === null || newBalance === '' || newBalance === selectedWallet?.currentBalance" class="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium rounded-xl py-3 transition-colors">
             حفظ
           </button>
         </div>
@@ -202,7 +202,7 @@
     <ConfirmDialog
       :show="showDeleteConfirm"
       title="حذف المحفظة"
-      message="هل أنت متأكد من حذف هذه المحفظة؟ لا يمكن التراجع عن هذا الإجراء."
+      :message="`هل أنت متأكد من حذف محفظة «${selectedWallet?.name || ''}»؟ لا يمكن التراجع عن هذا الإجراء. (المعاملات السابقة ستبقى في السجل)`"
       confirmText="حذف المحفظة"
       variant="danger"
       @confirm="deleteWallet"
@@ -262,17 +262,23 @@ const saveWallet = async () => {
 }
 
 // Wallet Detail
-const selectedWallet = ref(null)
+// نخزن المعرف فقط ونقرأ المحفظة من المتجر مباشرة حتى تتحدث البيانات تلقائياً
+const selectedWalletId = ref(null)
+const selectedWallet = computed(() =>
+  selectedWalletId.value ? walletsStore.getWalletById(selectedWalletId.value) || null : null
+)
 const openWalletDetail = (wallet) => {
-  selectedWallet.value = wallet
+  selectedWalletId.value = wallet.id
+}
+const closeWalletDetail = () => {
+  selectedWalletId.value = null
 }
 
 const walletTransactions = computed(() => {
   if (!selectedWallet.value) return []
   return transactionsStore.transactions
-    .filter(tx => tx.walletId === selectedWallet.value.id || tx.toWalletId === selectedWallet.value.id)
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-    .slice(0, 5) // Last 5 txs
+    .filter(tx => tx.walletId === selectedWallet.value.id || tx.toWalletId === selectedWallet.value.id || tx.fromWalletId === selectedWallet.value.id)
+    .slice(0, 5) // Last 5 txs (already sorted by createdAt desc)
 })
 
 const formatDate = (dateStr) => {
@@ -285,31 +291,37 @@ const formatDate = (dateStr) => {
 const showEditBalanceModal = ref(false)
 const newBalance = ref(null)
 
+const openEditBalance = () => {
+  newBalance.value = selectedWallet.value ? Number(selectedWallet.value.currentBalance) || 0 : null
+  showEditBalanceModal.value = true
+}
+
 const saveEditedBalance = async () => {
-  if (newBalance.value === null || !selectedWallet.value) return
+  if (newBalance.value === null || newBalance.value === '' || !selectedWallet.value) return
   
-  const diff = Number(newBalance.value) - selectedWallet.value.currentBalance
-  if (diff !== 0) {
-    // Add adjustment transaction
+  const wallet = selectedWallet.value
+  const diff = Number(newBalance.value) - (Number(wallet.currentBalance) || 0)
+  showEditBalanceModal.value = false
+  if (diff === 0) return
+
+  try {
+    // Add adjustment transaction (updates wallet balance as well)
     await transactionsStore.addTransaction({
       type: diff > 0 ? 'income' : 'expense',
       categoryId: 'adjustment',
       categoryName: 'تسوية رصيد',
+      categoryIcon: '⚖️',
       amount: Math.abs(diff),
-      walletId: selectedWallet.value.id,
-      walletName: selectedWallet.value.name,
+      walletId: wallet.id,
+      walletName: wallet.name,
       title: 'تسوية رصيد يدوي',
       date: new Date().toISOString().split('T')[0],
       notes: 'تم تعديل الرصيد يدوياً من إعدادات المحفظة'
     })
-    
-    // The store should automatically update the wallet balance via triggers or local update,
-    // but we can enforce it here if needed or refresh
-    await walletsStore.fetchWallets()
-    // Update local selected wallet view
-    selectedWallet.value = walletsStore.getWalletById(selectedWallet.value.id)
+  } catch (err) {
+    console.error('Error adjusting balance:', err)
+    alert('تعذر تعديل الرصيد: ' + (err?.code || err?.message || 'خطأ غير معروف'))
   }
-  showEditBalanceModal.value = false
 }
 
 // Delete Wallet
@@ -319,11 +331,21 @@ const confirmDeleteWallet = () => {
   showDeleteConfirm.value = true
 }
 
-const deleteWallet = async () => {
-  if (selectedWallet.value) {
-    await walletsStore.deleteWallet(selectedWallet.value.id)
-    showDeleteConfirm.value = false
-    selectedWallet.value = null
-  }
+const deleteWallet = () => {
+  const wallet = selectedWallet.value
+  showDeleteConfirm.value = false
+  if (!wallet) return
+
+  // نغلق النوافذ فوراً: Firestore يطبق الحذف محلياً مباشرة،
+  // أما انتظار تأكيد الخادم فقد يستغرق وقتاً طويلاً (أو لا ينتهي بدون إنترنت)
+  closeWalletDetail()
+
+  walletsStore.deleteWallet(wallet.id).catch((err) => {
+    console.error('Error deleting wallet:', err)
+    const reason = err?.code === 'permission-denied'
+      ? 'ليست لديك صلاحية الحذف (تحقق من قواعد Firestore).'
+      : (err?.code || err?.message || 'خطأ غير معروف')
+    alert(`تعذر حذف المحفظة «${wallet.name}»: ${reason}`)
+  })
 }
 </script>

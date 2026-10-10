@@ -1,7 +1,7 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { db, HOUSEHOLD_ID } from '../firebase.js'
-import { collection, doc, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, serverTimestamp, increment, writeBatch } from 'firebase/firestore'
+import { collection, doc, addDoc, updateDoc, deleteDoc, getDoc, getDocs, setDoc, onSnapshot, query, serverTimestamp, increment, writeBatch } from 'firebase/firestore'
 
 export const useWalletsStore = defineStore('wallets', () => {
   const wallets = ref([])
@@ -25,13 +25,18 @@ export const useWalletsStore = defineStore('wallets', () => {
     return (id) => wallets.value.find(w => w.id === id)
   })
 
+  let unsubscribe = null
+
   const fetchWallets = () => {
+    // تجنب إنشاء أكثر من مستمع لنفس البيانات
+    if (unsubscribe) return unsubscribe
+
     loading.value = true
     const q = query(
       collection(db, 'households', HOUSEHOLD_ID, 'wallets')
     )
     
-    return onSnapshot(q, (snapshot) => {
+    unsubscribe = onSnapshot(q, (snapshot) => {
       let fetched = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
@@ -49,7 +54,17 @@ export const useWalletsStore = defineStore('wallets', () => {
     }, (error) => {
       console.error("Error fetching wallets:", error)
       loading.value = false
+      unsubscribe = null
     })
+    return unsubscribe
+  }
+
+  const stopListening = () => {
+    if (unsubscribe) {
+      unsubscribe()
+      unsubscribe = null
+    }
+    wallets.value = []
   }
 
   const addWallet = async (data) => {
@@ -93,8 +108,26 @@ export const useWalletsStore = defineStore('wallets', () => {
     }
   }
 
+  // إنشاء المحافظ الافتراضية مرة واحدة فقط في عمر التطبيق
+  // (حتى لا تعود المحافظ المحذوفة عند فتح التطبيق مرة أخرى)
   const initDefaultWallets = async () => {
-    if (wallets.value.length > 0) return
+    const settingsRef = doc(db, 'households', HOUSEHOLD_ID, 'settings', 'main')
+    const walletsRef = collection(db, 'households', HOUSEHOLD_ID, 'wallets')
+
+    try {
+      const settingsSnap = await getDoc(settingsRef)
+      if (settingsSnap.exists() && settingsSnap.data().walletsSeeded) return
+
+      const existing = await getDocs(walletsRef)
+      if (!existing.empty || wallets.value.length > 0) {
+        // بيانات قديمة موجودة مسبقاً: نسجل فقط أن الإعداد الأولي تم
+        await setDoc(settingsRef, { walletsSeeded: true }, { merge: true })
+        return
+      }
+    } catch (err) {
+      console.error('Could not verify wallets before seeding:', err)
+      return
+    }
 
     const defaults = [
       { name: 'كاش في اليد', type: 'cash', icon: '💵', currentBalance: 0, order: 1 },
@@ -104,7 +137,6 @@ export const useWalletsStore = defineStore('wallets', () => {
     ]
 
     const batch = writeBatch(db)
-    const walletsRef = collection(db, 'households', HOUSEHOLD_ID, 'wallets')
 
     defaults.forEach(wallet => {
       const newRef = doc(walletsRef)
@@ -113,6 +145,7 @@ export const useWalletsStore = defineStore('wallets', () => {
         createdAt: serverTimestamp()
       })
     })
+    batch.set(settingsRef, { walletsSeeded: true }, { merge: true })
 
     await batch.commit()
   }
@@ -125,6 +158,7 @@ export const useWalletsStore = defineStore('wallets', () => {
     digitalBalance,
     getWalletById,
     fetchWallets,
+    stopListening,
     addWallet,
     updateWallet,
     deleteWallet,

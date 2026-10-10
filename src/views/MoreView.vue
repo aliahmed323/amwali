@@ -11,6 +11,12 @@
           <div class="flex-1 font-medium text-slate-200">المحافظ</div>
           <div class="text-slate-500 text-sm transform -scale-x-100">➜</div>
         </router-link>
+
+        <router-link to="/categories" class="flex items-center gap-4 p-4 hover:bg-slate-800/50 border-b border-slate-800/50 transition-colors">
+          <div class="w-10 h-10 rounded-xl bg-teal-500/10 flex items-center justify-center text-xl">🗂️</div>
+          <div class="flex-1 font-medium text-slate-200">الأقسام (المصروفات والإيرادات)</div>
+          <div class="text-slate-500 text-sm transform -scale-x-100">➜</div>
+        </router-link>
         
         <router-link to="/reports" class="flex items-center gap-4 p-4 hover:bg-slate-800/50 border-b border-slate-800/50 transition-colors">
           <div class="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-xl">📊</div>

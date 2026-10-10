@@ -36,6 +36,11 @@ authStore.initAuth();
 // الآن نركب التطبيق — حارس الروتر سينتظر Firebase عبر waitForAuth()
 app.mount('#app');
 
+// حذف كاش Firestore القديم الذي كان يخزنه الـ Service Worker (كان يسبب بيانات قديمة)
+if ('caches' in window) {
+  caches.delete('firebase-firestore-cache').catch(() => {});
+}
+
 // تحميل البيانات الافتراضية عند تسجيل الدخول
 let initialized = false;
 authStore.$subscribe(async () => {
@@ -48,8 +53,12 @@ authStore.$subscribe(async () => {
     categoriesStore.fetchCategories();
 
     setTimeout(async () => {
-      await walletsStore.initDefaultWallets();
-      await categoriesStore.initDefaultCategories();
+      try {
+        await walletsStore.initDefaultWallets();
+        await categoriesStore.initDefaultCategories();
+      } catch (err) {
+        console.error('Error initializing default data:', err);
+      }
       
       // طلب إذن الإشعارات للمساهمات اليومية
       if ('Notification' in window && Notification.permission === 'default') {
@@ -64,7 +73,9 @@ authStore.$subscribe(async () => {
       }
     }, 1500);
   }
-  if (!authStore.isAuthenticated) {
+  if (!authStore.isAuthenticated && initialized) {
     initialized = false;
+    useWalletsStore().stopListening();
+    useCategoriesStore().stopListening();
   }
 });

@@ -82,16 +82,27 @@
 
         <!-- القسم -->
         <div v-if="form.type !== 'transfer'">
-          <label class="block text-sm font-medium text-slate-300 mb-2">القسم</label>
+          <div class="flex items-center justify-between mb-2">
+            <label class="block text-sm font-medium text-slate-300">القسم</label>
+            <button type="button" @click="goToCategories(true)" class="text-xs text-blue-400 hover:text-blue-300">＋ قسم جديد</button>
+          </div>
           <select v-model="form.categoryId" class="w-full bg-slate-800 border border-slate-700 rounded-xl text-white px-4 py-3 focus:ring-2 focus:ring-blue-500">
             <option value="" disabled>اختر القسم</option>
             <option v-for="c in filteredCategories" :key="c.id" :value="c.id">
               {{ c.icon }} {{ c.name }}
             </option>
           </select>
-          <p v-if="filteredCategories.length === 0" class="text-amber-400 text-xs mt-1 px-1">
-            ⚠ لا توجد أقسام لهذا النوع. أنشئ قسماً من قسم الإعدادات.
-          </p>
+          <div v-if="filteredCategories.length === 0" class="mt-2 bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 text-xs text-amber-300 space-y-2">
+            <p>⚠ لا توجد أقسام لهذا النوع بعد.</p>
+            <div class="flex gap-2">
+              <button type="button" @click="goToCategories(true)" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg py-2">
+                إنشاء قسم
+              </button>
+              <button type="button" @click="restoreDefaults" :disabled="restoring" class="flex-1 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 font-medium rounded-lg py-2">
+                {{ restoring ? 'جاري...' : 'إضافة الأقسام الافتراضية' }}
+              </button>
+            </div>
+          </div>
         </div>
 
         <!-- العنوان -->
@@ -140,6 +151,7 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { formatMoney } from '../utils/formatters.js'
 import CalculatorModal from './CalculatorModal.vue'
 import { useWalletsStore } from '../stores/wallets'
@@ -153,10 +165,32 @@ const props = defineProps({
 })
 const emit = defineEmits(['close', 'saved'])
 
+const router = useRouter()
 const walletsStore = useWalletsStore()
 const categoriesStore = useCategoriesStore()
 const transactionsStore = useTransactionsStore()
 const authStore = useAuthStore()
+
+// الانتقال لشاشة إدارة الأقسام (مع فتح نموذج الإضافة لنفس النوع)
+function goToCategories(openAdd = false) {
+  const query = { type: form.value.type === 'income' ? 'income' : 'expense' }
+  if (openAdd) query.add = '1'
+  emit('close')
+  router.push({ path: '/categories', query })
+}
+
+const restoring = ref(false)
+async function restoreDefaults() {
+  restoring.value = true
+  try {
+    await categoriesStore.restoreDefaultCategories()
+  } catch (err) {
+    console.error('Error restoring categories:', err)
+    errorMsg.value = 'تعذر إضافة الأقسام الافتراضية: ' + (err?.code || err?.message || '')
+  } finally {
+    restoring.value = false
+  }
+}
 
 const loading = ref(false)
 const showCalc = ref(false)
@@ -245,9 +279,19 @@ const save = async () => {
 
   loading.value = true
   try {
+    const category = categoriesStore.categories.find(c => c.id === form.value.categoryId)
+    const wallet = walletsStore.getWalletById(form.value.walletId)
+    const toWallet = form.value.type === 'transfer' ? walletsStore.getWalletById(form.value.toWalletId) : null
+
     await transactionsStore.addTransaction({
       ...form.value,
-      fromWalletId: form.value.walletId
+      categoryId: form.value.type === 'transfer' ? '' : form.value.categoryId,
+      categoryName: form.value.type === 'transfer' ? 'تحويل' : (category?.name || ''),
+      categoryIcon: form.value.type === 'transfer' ? '🔄' : (category?.icon || ''),
+      walletName: wallet?.name || '',
+      toWalletName: toWallet?.name || '',
+      fromWalletId: form.value.walletId,
+      createdBy: authStore.user?.email || ''
     })
     emit('saved')
     emit('close')

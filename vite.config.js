@@ -63,19 +63,10 @@ export default defineConfig({
                 statuses: [0, 200]
               }
             }
-          },
-          {
-            urlPattern: /^https:\/\/firestore\.googleapis\.com\/.*/i,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'firebase-firestore-cache',
-              expiration: {
-                maxEntries: 50,
-                maxAgeSeconds: 60 * 60 * 24 * 7
-              },
-              networkTimeoutSeconds: 3
-            }
           }
+          // ملاحظة: لا تقم بتخزين طلبات firestore.googleapis.com في الـ Service Worker.
+          // Firestore يستخدم اتصالات بث مستمرة، وتخزينها يسبب بيانات قديمة وفشل المزامنة
+          // (مثل عودة المحفظة بعد حذفها أو عدم ظهور الأقسام). Firestore لديه كاش خاص به.
         ]
       }
     })
