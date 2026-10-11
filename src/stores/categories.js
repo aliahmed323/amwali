@@ -3,26 +3,29 @@ import { defineStore } from 'pinia'
 import { db, HOUSEHOLD_ID } from '../firebase.js'
 import { collection, doc, addDoc, updateDoc, deleteDoc, getDoc, getDocs, setDoc, onSnapshot, query, serverTimestamp, writeBatch } from 'firebase/firestore'
 
+const STORAGE_KEY = 'amwali_categories_cache_v2'
+
 // الأقسام الافتراضية
 export const DEFAULT_CATEGORIES = [
   // Expenses
-  { name: 'إيجار', icon: '🏠', type: 'expense', order: 1, isDefault: true },
-  { name: 'وقود', icon: '⛽', type: 'expense', order: 2, isDefault: true },
-  { name: 'مواد غذائية', icon: '🛒', type: 'expense', order: 3, isDefault: true },
-  { name: 'صحة', icon: '💊', type: 'expense', order: 4, isDefault: true },
-  { name: 'اتصالات', icon: '📱', type: 'expense', order: 5, isDefault: true },
-  { name: 'تعليم', icon: '🎓', type: 'expense', order: 6, isDefault: true },
-  { name: 'ملابس', icon: '👕', type: 'expense', order: 7, isDefault: true },
-  { name: 'صيانة السيارة', icon: '🔧', type: 'expense', order: 8, isDefault: true },
-  { name: 'كهرباء وماء', icon: '💡', type: 'expense', order: 9, isDefault: true },
-  { name: 'نقل ومواصلات', icon: '🚌', type: 'expense', order: 10, isDefault: true },
-  { name: 'ترفيه', icon: '🎉', type: 'expense', order: 11, isDefault: true },
-  { name: 'أخرى', icon: '📦', type: 'expense', order: 12, isDefault: true },
+  { id: 'def_c_1', name: 'إيجار', icon: '🏠', type: 'expense', order: 1, isDefault: true },
+  { id: 'def_c_2', name: 'وقود', icon: '⛽', type: 'expense', order: 2, isDefault: true },
+  { id: 'def_c_3', name: 'مواد غذائية', icon: '🛒', type: 'expense', order: 3, isDefault: true },
+  { id: 'def_c_4', name: 'صحة وعلاج', icon: '💊', type: 'expense', order: 4, isDefault: true },
+  { id: 'def_c_5', name: 'اتصالات وإنترنت', icon: '📱', type: 'expense', order: 5, isDefault: true },
+  { id: 'def_c_6', name: 'تعليم ودراسة', icon: '🎓', type: 'expense', order: 6, isDefault: true },
+  { id: 'def_c_7', name: 'ملابس وتجهيزات', icon: '👕', type: 'expense', order: 7, isDefault: true },
+  { id: 'def_c_8', name: 'صيانة ومصاريف سيارة', icon: '🔧', type: 'expense', order: 8, isDefault: true },
+  { id: 'def_c_9', name: 'كهرباء ومياه', icon: '💡', type: 'expense', order: 9, isDefault: true },
+  { id: 'def_c_10', name: 'نقل ومواصلات', icon: '🚌', type: 'expense', order: 10, isDefault: true },
+  { id: 'def_c_11', name: 'ترفيه ومطاعم', icon: '🎉', type: 'expense', order: 11, isDefault: true },
+  { id: 'def_c_12', name: 'أخرى ونثريات', icon: '📦', type: 'expense', order: 12, isDefault: true },
 
   // Incomes
-  { name: 'إيراد التاكسي', icon: '🚕', type: 'income', order: 13, isDefault: true },
-  { name: 'راتب الزوجة', icon: '💰', type: 'income', order: 14, isDefault: true },
-  { name: 'دخل إضافي', icon: '💵', type: 'income', order: 15, isDefault: true }
+  { id: 'def_c_13', name: 'الراتب الأساسي', icon: '💵', type: 'income', order: 13, isDefault: true },
+  { id: 'def_c_14', name: 'إيراد عمل إضافي', icon: '🚕', type: 'income', order: 14, isDefault: true },
+  { id: 'def_c_15', name: 'أرباح أو استثمار', icon: '📈', type: 'income', order: 15, isDefault: true },
+  { id: 'def_c_16', name: 'تحويل أو دخل آخر', icon: '💰', type: 'income', order: 16, isDefault: true }
 ]
 
 export const useCategoriesStore = defineStore('categories', () => {
@@ -33,6 +36,38 @@ export const useCategoriesStore = defineStore('categories', () => {
 
   const categoriesRef = () => collection(db, 'households', HOUSEHOLD_ID, 'categories')
 
+  // استرجاع وحفظ محلي
+  const loadLocalCategories = () => {
+    try {
+      const cached = localStorage.getItem(STORAGE_KEY)
+      if (cached) {
+        const parsed = JSON.parse(cached)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          categories.value = parsed
+          return true
+        }
+      }
+    } catch (e) {
+      console.warn('Could not read categories from localStorage:', e)
+    }
+    return false
+  }
+
+  const saveLocalCategories = () => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(categories.value))
+    } catch (e) {
+      console.warn('Could not save categories to localStorage:', e)
+    }
+  }
+
+  // تحميل فوري من الذاكرة المحلية
+  loadLocalCategories()
+  if (categories.value.length === 0) {
+    categories.value = [...DEFAULT_CATEGORIES]
+    saveLocalCategories()
+  }
+
   const expenseCategories = computed(() => {
     return categories.value.filter(c => c.type === 'expense')
   })
@@ -42,12 +77,9 @@ export const useCategoriesStore = defineStore('categories', () => {
   })
 
   const fetchCategories = () => {
-    // تجنب إنشاء أكثر من مستمع لنفس البيانات
     if (unsubscribe) return unsubscribe
 
     loading.value = true
-    // ملاحظة: لا نستخدم orderBy('order') هنا لأن Firestore يستبعد أي مستند
-    // لا يحتوي على الحقل 'order'، فنرتب في الذاكرة بدلاً من ذلك
     const q = query(categoriesRef())
 
     unsubscribe = onSnapshot(q, (snapshot) => {
@@ -56,14 +88,24 @@ export const useCategoriesStore = defineStore('categories', () => {
         ...d.data()
       }))
       fetched.sort((a, b) => (a.order ?? 999) - (b.order ?? 999))
-      categories.value = fetched
+      
+      if (fetched.length > 0) {
+        categories.value = fetched
+        saveLocalCategories()
+      } else if (categories.value.length === 0) {
+        categories.value = [...DEFAULT_CATEGORIES]
+        saveLocalCategories()
+      }
+
       error.value = null
       loading.value = false
     }, (err) => {
-      console.error('Error fetching categories:', err)
+      console.warn('Firestore fetchCategories error (fallback to local):', err)
       error.value = err
       loading.value = false
-      unsubscribe = null
+      if (categories.value.length === 0) {
+        loadLocalCategories()
+      }
     })
     return unsubscribe
   }
@@ -73,76 +115,150 @@ export const useCategoriesStore = defineStore('categories', () => {
       unsubscribe()
       unsubscribe = null
     }
-    categories.value = []
   }
 
   const addCategory = async (data) => {
     const nextOrder = categories.value.length > 0
       ? Math.max(...categories.value.map(c => c.order || 0)) + 1
       : 1
-    await addDoc(categoriesRef(), {
+      
+    const newCat = {
       name: data.name.trim(),
       icon: data.icon || '📦',
       type: data.type,
       order: data.order ?? nextOrder,
-      isDefault: false,
-      createdAt: serverTimestamp()
-    })
+      isDefault: false
+    }
+
+    // إضافة محلية فورية
+    const tempId = 'cat_' + Date.now()
+    const localCat = { id: tempId, ...newCat }
+    categories.value.push(localCat)
+    saveLocalCategories()
+
+    // محاولة الحفظ السحابي
+    try {
+      const docRef = await addDoc(categoriesRef(), {
+        ...newCat,
+        createdAt: serverTimestamp()
+      })
+      localCat.id = docRef.id
+      saveLocalCategories()
+    } catch (err) {
+      console.warn('Firestore addCategory error (kept locally):', err)
+      error.value = err
+    }
   }
 
   const updateCategory = async (id, data) => {
-    const catRef = doc(db, 'households', HOUSEHOLD_ID, 'categories', id)
-    await updateDoc(catRef, {
-      ...data,
-      updatedAt: serverTimestamp()
-    })
+    const idx = categories.value.findIndex(c => c.id === id)
+    if (idx !== -1) {
+      categories.value[idx] = { ...categories.value[idx], ...data }
+      saveLocalCategories()
+    }
+
+    try {
+      const catRef = doc(db, 'households', HOUSEHOLD_ID, 'categories', id)
+      await updateDoc(catRef, {
+        ...data,
+        updatedAt: serverTimestamp()
+      })
+    } catch (err) {
+      console.warn('Firestore updateCategory error (updated locally):', err)
+    }
   }
 
   const deleteCategory = async (id) => {
-    const catRef = doc(db, 'households', HOUSEHOLD_ID, 'categories', id)
-    await deleteDoc(catRef)
+    // حذف محلي فوري
+    categories.value = categories.value.filter(c => c.id !== id)
+    saveLocalCategories()
+
+    try {
+      const catRef = doc(db, 'households', HOUSEHOLD_ID, 'categories', id)
+      await deleteDoc(catRef)
+    } catch (err) {
+      console.warn('Firestore deleteCategory error (deleted locally):', err)
+      error.value = err
+    }
   }
 
-  // إضافة الأقسام الافتراضية الناقصة فقط (بدون تكرار الموجود بنفس الاسم والنوع)
+  // إضافة الأقسام الافتراضية الناقصة محلياً وسحابياً دون أي تعليق
   const restoreDefaultCategories = async () => {
     const existing = new Set(categories.value.map(c => `${c.type}::${c.name}`))
     const missing = DEFAULT_CATEGORIES.filter(c => !existing.has(`${c.type}::${c.name}`))
+    
     if (missing.length === 0) return 0
 
-    const batch = writeBatch(db)
+    // إضافة محلية فورية
     missing.forEach(cat => {
-      batch.set(doc(categoriesRef()), { ...cat, createdAt: serverTimestamp() })
+      categories.value.push({
+        id: 'cat_def_' + Math.random().toString(36).substring(2, 8),
+        name: cat.name,
+        icon: cat.icon,
+        type: cat.type,
+        order: cat.order,
+        isDefault: true
+      })
     })
-    await batch.commit()
+    categories.value.sort((a, b) => (a.order ?? 999) - (b.order ?? 999))
+    saveLocalCategories()
+
+    // محاولة المزامنة مع Firestore في الخلفية
+    try {
+      const batch = writeBatch(db)
+      missing.forEach(cat => {
+        batch.set(doc(categoriesRef()), {
+          name: cat.name,
+          icon: cat.icon,
+          type: cat.type,
+          order: cat.order,
+          isDefault: true,
+          createdAt: serverTimestamp()
+        })
+      })
+      await batch.commit()
+    } catch (err) {
+      console.warn('Firestore restoreDefaultCategories batch skipped (restored locally):', err)
+      error.value = err
+    }
+
     return missing.length
   }
 
-  // إنشاء الأقسام الافتراضية عند أول استخدام فقط
   const initDefaultCategories = async () => {
-    const settingsRef = doc(db, 'households', HOUSEHOLD_ID, 'settings', 'main')
+    if (categories.value.length === 0) {
+      categories.value = [...DEFAULT_CATEGORIES]
+      saveLocalCategories()
+    }
 
-    // نتحقق من الخادم مباشرة بدل الاعتماد على المصفوفة المحلية
-    // لتجنب إنشاء نسخ مكررة إذا تأخر تحميل البيانات
     try {
+      const settingsRef = doc(db, 'households', HOUSEHOLD_ID, 'settings', 'main')
       const settingsSnap = await getDoc(settingsRef)
       if (settingsSnap.exists() && settingsSnap.data().categoriesSeeded) return
 
       const snap = await getDocs(categoriesRef())
-      if (!snap.empty || categories.value.length > 0) {
+      if (!snap.empty) {
         await setDoc(settingsRef, { categoriesSeeded: true }, { merge: true })
         return
       }
-    } catch (err) {
-      console.error('Could not verify categories before seeding:', err)
-      return
-    }
 
-    const batch = writeBatch(db)
-    DEFAULT_CATEGORIES.forEach(cat => {
-      batch.set(doc(categoriesRef()), { ...cat, createdAt: serverTimestamp() })
-    })
-    batch.set(settingsRef, { categoriesSeeded: true }, { merge: true })
-    await batch.commit()
+      const batch = writeBatch(db)
+      DEFAULT_CATEGORIES.forEach(cat => {
+        batch.set(doc(categoriesRef()), {
+          name: cat.name,
+          icon: cat.icon,
+          type: cat.type,
+          order: cat.order,
+          isDefault: true,
+          createdAt: serverTimestamp()
+        })
+      })
+      batch.set(settingsRef, { categoriesSeeded: true }, { merge: true })
+      await batch.commit()
+    } catch (err) {
+      console.warn('initDefaultCategories skipped cloud sync (working locally):', err)
+      error.value = err
+    }
   }
 
   return {

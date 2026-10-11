@@ -19,14 +19,11 @@ const router = createRouter({
   routes
 });
 
-router.beforeEach((to, from, next) => {
+router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore();
 
-  // إذا لم تتأكد Firebase بعد من حالة المصادقة،
-  // نسمح بالمرور — App.vue ستعرض شاشة تحميل وتُوجّه بعد التأكد
   if (!authStore.authReady) {
-    next();
-    return;
+    await authStore.waitForAuth();
   }
 
   if (to.meta.requiresAuth && !authStore.isAuthenticated) {

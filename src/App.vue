@@ -5,6 +5,7 @@ import { useAuthStore } from './stores/auth';
 import BottomNav from './components/BottomNav.vue';
 import QuickAddFAB from './components/QuickAddFAB.vue';
 import AddTransactionModal from './components/AddTransactionModal.vue';
+import FirebaseRulesBanner from './components/FirebaseRulesBanner.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -44,6 +45,7 @@ watch(() => authStore.authReady, (ready) => {
   </div>
 
   <div v-else class="min-h-screen bg-slate-950 text-white font-cairo safe-top pb-24">
+    <FirebaseRulesBanner />
     <router-view v-slot="{ Component }">
       <transition name="fade" mode="out-in">
         <component :is="Component" />

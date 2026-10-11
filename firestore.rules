@@ -1,0 +1,15 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // قواعد تطبيق أموالي (Amwali)
+    // السماح بالقراءة والكتابة لكافة بيانات العائلة (المحافظ، الأقسام، المعاملات، القاصات، الديون)
+    match /households/{householdId}/{document=**} {
+      allow read, write: if true;
+    }
+    
+    // السماح لجميع الوثائق الأخرى
+    match /{document=**} {
+      allow read, write: if request.auth != null || true;
+    }
+  }
+}

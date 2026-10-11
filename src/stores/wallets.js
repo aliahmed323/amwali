@@ -3,9 +3,50 @@ import { defineStore } from 'pinia'
 import { db, HOUSEHOLD_ID } from '../firebase.js'
 import { collection, doc, addDoc, updateDoc, deleteDoc, getDoc, getDocs, setDoc, onSnapshot, query, serverTimestamp, increment, writeBatch } from 'firebase/firestore'
 
+const STORAGE_KEY = 'amwali_wallets_cache_v2'
+
+export const DEFAULT_WALLETS = [
+  { id: 'default_cash', name: 'كاش في اليد', type: 'cash', icon: '💵', currentBalance: 0, order: 1 },
+  { id: 'default_card', name: 'بطاقة ائتمان', type: 'credit_card', icon: '💳', currentBalance: 0, order: 2 }
+]
+
 export const useWalletsStore = defineStore('wallets', () => {
   const wallets = ref([])
   const loading = ref(false)
+  const error = ref(null)
+  let unsubscribe = null
+
+  // استرجاع البيانات المحفوظة محلياً لسرعة التحميل وضمان العمل بدون انقطاع
+  const loadLocalWallets = () => {
+    try {
+      const cached = localStorage.getItem(STORAGE_KEY)
+      if (cached) {
+        const parsed = JSON.parse(cached)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          wallets.value = parsed
+          return true
+        }
+      }
+    } catch (e) {
+      console.warn('Could not read wallets from localStorage:', e)
+    }
+    return false
+  }
+
+  const saveLocalWallets = () => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(wallets.value))
+    } catch (e) {
+      console.warn('Could not save wallets to localStorage:', e)
+    }
+  }
+
+  // تحميل أولي فوري من الذاكرة المحلية
+  loadLocalWallets()
+  if (wallets.value.length === 0) {
+    wallets.value = [...DEFAULT_WALLETS]
+    saveLocalWallets()
+  }
 
   const totalBalance = computed(() => {
     return wallets.value.reduce((sum, wallet) => sum + (Number(wallet.currentBalance) || 0), 0)
@@ -17,24 +58,24 @@ export const useWalletsStore = defineStore('wallets', () => {
       .reduce((sum, wallet) => sum + (Number(wallet.currentBalance) || 0), 0)
   })
 
-  const digitalBalance = computed(() => {
-    return totalBalance.value - cashBalance.value
+  const creditCardBalance = computed(() => {
+    return wallets.value
+      .filter(w => w.type === 'credit_card')
+      .reduce((sum, wallet) => sum + (Number(wallet.currentBalance) || 0), 0)
   })
+
+  // للإبقاء على التوافق مع الكود السابق
+  const digitalBalance = computed(() => creditCardBalance.value)
 
   const getWalletById = computed(() => {
     return (id) => wallets.value.find(w => w.id === id)
   })
 
-  let unsubscribe = null
-
   const fetchWallets = () => {
-    // تجنب إنشاء أكثر من مستمع لنفس البيانات
     if (unsubscribe) return unsubscribe
 
     loading.value = true
-    const q = query(
-      collection(db, 'households', HOUSEHOLD_ID, 'wallets')
-    )
+    const q = query(collection(db, 'households', HOUSEHOLD_ID, 'wallets'))
     
     unsubscribe = onSnapshot(q, (snapshot) => {
       let fetched = snapshot.docs.map(doc => ({
@@ -42,19 +83,27 @@ export const useWalletsStore = defineStore('wallets', () => {
         ...doc.data()
       }))
       
-      // Sort in memory to allow displaying existing wallets missing 'order' field
-      fetched.sort((a, b) => {
-        const orderA = a.order !== undefined ? a.order : 999
-        const orderB = b.order !== undefined ? b.order : 999
-        return orderA - orderB
-      })
+      // الترتيب بالذاكرة
+      fetched.sort((a, b) => (a.order ?? 999) - (b.order ?? 999))
       
-      wallets.value = fetched
+      if (fetched.length > 0) {
+        wallets.value = fetched
+        saveLocalWallets()
+      } else if (wallets.value.length === 0) {
+        wallets.value = [...DEFAULT_WALLETS]
+        saveLocalWallets()
+      }
+      
+      error.value = null
       loading.value = false
-    }, (error) => {
-      console.error("Error fetching wallets:", error)
+    }, (err) => {
+      console.warn("Firestore fetchWallets error (fallback to local):", err)
+      error.value = err
       loading.value = false
-      unsubscribe = null
+      // في حال الخطأ نضمن وجود المحافظ محلياً
+      if (wallets.value.length === 0) {
+        loadLocalWallets()
+      }
     })
     return unsubscribe
   }
@@ -64,97 +113,145 @@ export const useWalletsStore = defineStore('wallets', () => {
       unsubscribe()
       unsubscribe = null
     }
-    wallets.value = []
   }
 
   const addWallet = async (data) => {
-    const walletsRef = collection(db, 'households', HOUSEHOLD_ID, 'wallets')
-    // Calculate next order
     const nextOrder = wallets.value.length > 0 
       ? Math.max(...wallets.value.map(w => w.order || 0)) + 1 
       : 1
       
-    await addDoc(walletsRef, {
-      ...data,
-      currentBalance: data.currentBalance || 0,
+    const newWalletData = {
+      name: data.name.trim(),
+      type: data.type === 'credit_card' ? 'credit_card' : 'cash',
+      icon: data.icon || (data.type === 'credit_card' ? '💳' : '💵'),
+      currentBalance: Number(data.currentBalance) || 0,
       order: nextOrder,
-      createdAt: serverTimestamp()
-    })
+      createdAt: new Date().toISOString()
+    }
+
+    // حفظ محلي فوري لضمان سرعة الاستجابة
+    const tempId = 'w_' + Date.now()
+    const localWallet = { id: tempId, ...newWalletData }
+    wallets.value.push(localWallet)
+    saveLocalWallets()
+
+    // محاولة الحفظ في Firestore
+    try {
+      const walletsRef = collection(db, 'households', HOUSEHOLD_ID, 'wallets')
+      const docRef = await addDoc(walletsRef, {
+        ...newWalletData,
+        createdAt: serverTimestamp()
+      })
+      // تحديث المعرف الحقيقي
+      localWallet.id = docRef.id
+      saveLocalWallets()
+    } catch (err) {
+      console.warn('Firestore addDoc error (kept locally):', err)
+      error.value = err
+    }
   }
 
   const updateWallet = async (id, data) => {
-    const walletRef = doc(db, 'households', HOUSEHOLD_ID, 'wallets', id)
-    await updateDoc(walletRef, {
-      ...data,
-      updatedAt: serverTimestamp()
-    })
+    const index = wallets.value.findIndex(w => w.id === id)
+    if (index !== -1) {
+      wallets.value[index] = { ...wallets.value[index], ...data }
+      saveLocalWallets()
+    }
+
+    try {
+      const walletRef = doc(db, 'households', HOUSEHOLD_ID, 'wallets', id)
+      await updateDoc(walletRef, {
+        ...data,
+        updatedAt: serverTimestamp()
+      })
+    } catch (err) {
+      console.warn('Firestore updateDoc error (updated locally):', err)
+    }
   }
 
   const deleteWallet = async (id) => {
-    const walletRef = doc(db, 'households', HOUSEHOLD_ID, 'wallets', id)
-    await deleteDoc(walletRef)
+    // حذف محلي فوري
+    wallets.value = wallets.value.filter(w => w.id !== id)
+    saveLocalWallets()
+
+    try {
+      const walletRef = doc(db, 'households', HOUSEHOLD_ID, 'wallets', id)
+      await deleteDoc(walletRef)
+    } catch (err) {
+      console.warn('Firestore deleteDoc error (deleted locally):', err)
+      error.value = err
+    }
   }
 
   const adjustBalance = async (walletId, amount) => {
     if (!walletId) return
-    const walletRef = doc(db, 'households', HOUSEHOLD_ID, 'wallets', walletId)
+    const numAmount = Number(amount) || 0
+
+    // تعديل محلي فوري
+    const target = wallets.value.find(w => w.id === walletId)
+    if (target) {
+      target.currentBalance = (Number(target.currentBalance) || 0) + numAmount
+      saveLocalWallets()
+    }
+
     try {
+      const walletRef = doc(db, 'households', HOUSEHOLD_ID, 'wallets', walletId)
       await updateDoc(walletRef, {
-        currentBalance: increment(amount),
+        currentBalance: increment(numAmount),
         updatedAt: serverTimestamp()
       })
-    } catch (error) {
-      console.warn(`Could not adjust balance for wallet ${walletId}. It may have been deleted.`, error)
+    } catch (err) {
+      console.warn('Firestore adjustBalance error (adjusted locally):', err)
     }
   }
 
-  // إنشاء المحافظ الافتراضية مرة واحدة فقط في عمر التطبيق
-  // (حتى لا تعود المحافظ المحذوفة عند فتح التطبيق مرة أخرى)
   const initDefaultWallets = async () => {
-    const settingsRef = doc(db, 'households', HOUSEHOLD_ID, 'settings', 'main')
-    const walletsRef = collection(db, 'households', HOUSEHOLD_ID, 'wallets')
+    // التأكد من وجودها محلياً أولاً
+    if (wallets.value.length === 0) {
+      wallets.value = [...DEFAULT_WALLETS]
+      saveLocalWallets()
+    }
 
     try {
+      const settingsRef = doc(db, 'households', HOUSEHOLD_ID, 'settings', 'main')
+      const walletsRef = collection(db, 'households', HOUSEHOLD_ID, 'wallets')
+
       const settingsSnap = await getDoc(settingsRef)
       if (settingsSnap.exists() && settingsSnap.data().walletsSeeded) return
 
       const existing = await getDocs(walletsRef)
-      if (!existing.empty || wallets.value.length > 0) {
-        // بيانات قديمة موجودة مسبقاً: نسجل فقط أن الإعداد الأولي تم
+      if (!existing.empty) {
         await setDoc(settingsRef, { walletsSeeded: true }, { merge: true })
         return
       }
-    } catch (err) {
-      console.error('Could not verify wallets before seeding:', err)
-      return
-    }
 
-    const defaults = [
-      { name: 'كاش في اليد', type: 'cash', icon: '💵', currentBalance: 0, order: 1 },
-      { name: 'زين كاش', type: 'zain_cash', icon: '📱', currentBalance: 0, order: 2 },
-      { name: 'سوبر كاش', type: 'super_cash', icon: '💳', currentBalance: 0, order: 3 },
-      { name: 'كريدت كارد', type: 'credit_card', icon: '🏦', currentBalance: 0, order: 4 }
-    ]
-
-    const batch = writeBatch(db)
-
-    defaults.forEach(wallet => {
-      const newRef = doc(walletsRef)
-      batch.set(newRef, {
-        ...wallet,
-        createdAt: serverTimestamp()
+      const batch = writeBatch(db)
+      DEFAULT_WALLETS.forEach(wallet => {
+        const newRef = doc(walletsRef)
+        batch.set(newRef, {
+          name: wallet.name,
+          type: wallet.type,
+          icon: wallet.icon,
+          currentBalance: wallet.currentBalance,
+          order: wallet.order,
+          createdAt: serverTimestamp()
+        })
       })
-    })
-    batch.set(settingsRef, { walletsSeeded: true }, { merge: true })
-
-    await batch.commit()
+      batch.set(settingsRef, { walletsSeeded: true }, { merge: true })
+      await batch.commit()
+    } catch (err) {
+      console.warn('initDefaultWallets cloud sync skipped (working offline):', err)
+      error.value = err
+    }
   }
 
   return {
     wallets,
     loading,
+    error,
     totalBalance,
     cashBalance,
+    creditCardBalance,
     digitalBalance,
     getWalletById,
     fetchWallets,
