@@ -43,6 +43,20 @@
         </div>
       </div>
 
+      <!-- تنبيه تنظيف المحافظ القديمة إن وُجدت -->
+      <div v-if="hasOldWallets" class="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 flex items-center justify-between gap-3 shadow-lg">
+        <div>
+          <p class="text-xs font-bold text-amber-300">يوجد محافظ قديمة (زين كاش / سوبر كارد)</p>
+          <p class="text-[11px] text-amber-200/80">انقر هنا لتنظيفها وحصر محافظك في كاش وائتمان فقط</p>
+        </div>
+        <button 
+          @click="cleanWallets"
+          class="bg-amber-500 hover:bg-amber-600 active:scale-95 text-slate-950 font-bold text-xs px-3.5 py-2 rounded-xl transition-all flex-shrink-0"
+        >
+          🧹 تنظيف الآن
+        </button>
+      </div>
+
       <!-- Wallets Grid -->
       <div v-if="walletsStore.wallets.length > 0" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <WalletCard 
@@ -303,6 +317,20 @@ onMounted(() => {
   walletsStore.fetchWallets()
   transactionsStore.fetchTransactions()
 })
+
+const hasOldWallets = computed(() => {
+  return walletsStore.wallets.some(w => 
+    w.name?.includes('سوبر') || 
+    w.name?.includes('زين') || 
+    w.type === 'zain_cash' || 
+    w.type === 'super_cash'
+  )
+})
+
+const cleanWallets = async () => {
+  const count = await walletsStore.cleanOldWallets()
+  alert(`تم تنظيف ${count} من المحافظ القديمة بنجاح!`)
+}
 
 // Add Wallet
 const showAddModal = ref(false)

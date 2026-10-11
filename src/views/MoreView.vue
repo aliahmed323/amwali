@@ -42,6 +42,15 @@
           <div class="text-slate-500 text-sm transform -scale-x-100">➜</div>
         </button>
 
+        <button @click="showCleanConfirm = true" class="w-full flex items-center gap-4 p-4 hover:bg-slate-800/50 border-b border-slate-800/50 transition-colors text-start">
+          <div class="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-xl">🧹</div>
+          <div class="flex-1">
+            <div class="font-bold text-amber-300">تنظيف المحافظ والأقسام القديمة</div>
+            <div class="text-xs text-slate-400">إزالة محافظ زين كاش وسوبر كارد والتاكسي وتعيين المحافظ الرسمية</div>
+          </div>
+          <div class="text-slate-500 text-sm transform -scale-x-100">➜</div>
+        </button>
+
         <button @click="showCycleConfirm = true" class="w-full flex items-center gap-4 p-4 hover:bg-slate-800/50 transition-colors">
           <div class="w-10 h-10 rounded-xl bg-rose-500/10 flex items-center justify-center text-xl">📅</div>
           <div class="flex-1 font-medium text-start text-rose-400">إغلاق الدورة المالية وبدء دورة جديدة</div>
@@ -90,6 +99,17 @@
       @confirm="handleCycleReset"
       @cancel="showCycleConfirm = false"
     />
+
+    <!-- Clean Old Data Confirmation -->
+    <ConfirmDialog
+      :show="showCleanConfirm"
+      title="تنظيف المحافظ والأقسام القديمة"
+      message="سيتم حذف المحافظ القديمة التي تحتوي على أسماء مثل (زين كاش، سوبر كارد) والأقسام القديمة (إيراد التاكسي، راتب الزوجة)، وتثبيت المحافظ النظيفة (كاش وبطاقة ائتمان) والأقسام الرسمية. هل تريد المتابعة؟"
+      confirmText="تنظيف وتحديث الآن"
+      variant="warning"
+      @confirm="handleCleanOldData"
+      @cancel="showCleanConfirm = false"
+    />
   </div>
 </template>
 
@@ -99,6 +119,8 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useTransactionsStore } from '@/stores/transactions'
 import { useSettingsStore } from '@/stores/settings'
+import { useWalletsStore } from '@/stores/wallets'
+import { useCategoriesStore } from '@/stores/categories'
 import TopBar from '@/components/TopBar.vue'
 import CalculatorModal from '@/components/CalculatorModal.vue'
 import ConfirmDialog from '@/components/ConfirmDialog.vue'
@@ -107,10 +129,13 @@ const router = useRouter()
 const authStore = useAuthStore()
 const txStore = useTransactionsStore()
 const settingsStore = useSettingsStore()
+const walletsStore = useWalletsStore()
+const categoriesStore = useCategoriesStore()
 
 const showCalculator = ref(false)
 const showLogoutConfirm = ref(false)
 const showCycleConfirm = ref(false)
+const showCleanConfirm = ref(false)
 
 const handleLogout = async () => {
   await authStore.logout()
@@ -124,5 +149,12 @@ const handleCycleReset = async () => {
   await settingsStore.archiveCurrentCycle(currentIncome, currentExpense)
   showCycleConfirm.value = false
   alert('تم أرشفة الدورة المالية السابقة والبدء بدورة جديدة لهذا اليوم.')
+}
+
+const handleCleanOldData = async () => {
+  showCleanConfirm.value = false
+  const wCount = await walletsStore.cleanOldWallets()
+  const cCount = await categoriesStore.cleanOldCategories()
+  alert(`تم بنجاح! تم تنظيف وتحديث المحافظ والأقسام وإزالة كافة المسميات القديمة.`)
 }
 </script>

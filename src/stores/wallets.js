@@ -238,11 +238,33 @@ export const useWalletsStore = defineStore('wallets', () => {
         })
       })
       batch.set(settingsRef, { walletsSeeded: true }, { merge: true })
-      await batch.commit()
     } catch (err) {
       console.warn('initDefaultWallets cloud sync skipped (working offline):', err)
       error.value = err
     }
+  }
+
+  // تنظيف وحذف المحافظ القديمة مثل (زين كاش، سوبر كارد، إلخ)
+  const cleanOldWallets = async () => {
+    const toRemove = wallets.value.filter(w => 
+      w.name?.includes('سوبر') || 
+      w.name?.includes('زين') || 
+      w.type === 'zain_cash' || 
+      w.type === 'super_cash'
+    )
+
+    for (const w of toRemove) {
+      await deleteWallet(w.id)
+    }
+
+    // إذا أصبحت القائمة فارغة أو لا يوجد محفظة كاش وبطاقة، نضمن وجود المحفظتين النظيفتين
+    if (!wallets.value.some(w => w.type === 'cash')) {
+      await addWallet({ name: 'كاش في اليد', type: 'cash', icon: '💵', currentBalance: 0 })
+    }
+    if (!wallets.value.some(w => w.type === 'credit_card')) {
+      await addWallet({ name: 'بطاقة ائتمان', type: 'credit_card', icon: '💳', currentBalance: 0 })
+    }
+    return toRemove.length
   }
 
   return {
@@ -260,6 +282,7 @@ export const useWalletsStore = defineStore('wallets', () => {
     updateWallet,
     deleteWallet,
     adjustBalance,
-    initDefaultWallets
+    initDefaultWallets,
+    cleanOldWallets
   }
 })

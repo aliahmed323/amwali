@@ -23,9 +23,9 @@ export const DEFAULT_CATEGORIES = [
 
   // Incomes
   { id: 'def_c_13', name: 'الراتب الأساسي', icon: '💵', type: 'income', order: 13, isDefault: true },
-  { id: 'def_c_14', name: 'إيراد عمل إضافي', icon: '🚕', type: 'income', order: 14, isDefault: true },
-  { id: 'def_c_15', name: 'أرباح أو استثمار', icon: '📈', type: 'income', order: 15, isDefault: true },
-  { id: 'def_c_16', name: 'تحويل أو دخل آخر', icon: '💰', type: 'income', order: 16, isDefault: true }
+  { id: 'def_c_14', name: 'أعمال وتجارة', icon: '💼', type: 'income', order: 14, isDefault: true },
+  { id: 'def_c_15', name: 'استثمار وأرباح', icon: '📈', type: 'income', order: 15, isDefault: true },
+  { id: 'def_c_16', name: 'دخل إضافي', icon: '💰', type: 'income', order: 16, isDefault: true }
 ]
 
 export const useCategoriesStore = defineStore('categories', () => {
@@ -261,6 +261,22 @@ export const useCategoriesStore = defineStore('categories', () => {
     }
   }
 
+  // تنظيف وإزالة الأقسام القديمة مثل (إيراد التاكسي وراتب الزوجة)
+  const cleanOldCategories = async () => {
+    const toRemove = categories.value.filter(c =>
+      c.name?.includes('تاكسي') ||
+      c.name?.includes('الزوجة')
+    )
+
+    for (const c of toRemove) {
+      await deleteCategory(c.id)
+    }
+
+    // إضافة الأقسام النظيفة المتبقية
+    await restoreDefaultCategories()
+    return toRemove.length
+  }
+
   return {
     categories,
     loading,
@@ -273,6 +289,7 @@ export const useCategoriesStore = defineStore('categories', () => {
     updateCategory,
     deleteCategory,
     restoreDefaultCategories,
-    initDefaultCategories
+    initDefaultCategories,
+    cleanOldCategories
   }
 })

@@ -37,6 +37,20 @@
         </button>
       </div>
 
+      <!-- تنبيه تنظيف الأقسام القديمة إن وُجدت -->
+      <div v-if="hasOldCategories" class="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 flex items-center justify-between gap-3 shadow-lg">
+        <div>
+          <p class="text-xs font-bold text-amber-300">يوجد أقسام قديمة (إيراد التاكسي / راتب الزوجة)</p>
+          <p class="text-[11px] text-amber-200/80">انقر هنا لتنظيفها وتحديث الأقسام الرسمية فوراً</p>
+        </div>
+        <button 
+          @click="cleanCategories"
+          class="bg-amber-500 hover:bg-amber-600 active:scale-95 text-slate-950 font-bold text-xs px-3.5 py-2 rounded-xl transition-all flex-shrink-0"
+        >
+          🧹 تنظيف الآن
+        </button>
+      </div>
+
       <!-- إشعار نجاح العملية -->
       <div v-if="toastMessage" class="p-3 bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 rounded-xl text-xs text-center font-bold animate-fade-in">
         {{ toastMessage }}
@@ -207,7 +221,19 @@ const visibleCategories = computed(() =>
   activeType.value === 'income' ? categoriesStore.incomeCategories : categoriesStore.expenseCategories
 )
 
-const icons = ['🏠', '⛽', '🛒', '💊', '📱', '🎓', '👕', '🔧', '💡', '🚌', '🎉', '📦', '🍔', '☕', '🎁', '👶', '🧾', '✈️', '🚕', '💰', '💵', '💼', '📈', '🏦']
+const hasOldCategories = computed(() => {
+  return categoriesStore.categories.some(c => 
+    c.name?.includes('تاكسي') || 
+    c.name?.includes('الزوجة')
+  )
+})
+
+const cleanCategories = async () => {
+  const count = await categoriesStore.cleanOldCategories()
+  showToast(`تم تنظيف وتحديث الأقسام بنجاح!`)
+}
+
+const icons = ['🏠', '⛽', '🛒', '💊', '📱', '🎓', '👕', '🔧', '💡', '🚌', '🎉', '📦', '🍔', '☕', '🎁', '👶', '🧾', '✈️', '💰', '💵', '💼', '📈', '🏦']
 const showAddModal = ref(false)
 const newCategory = ref({ name: '', icon: '📦', type: 'expense' })
 
